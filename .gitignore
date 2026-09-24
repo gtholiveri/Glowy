@@ -8,3 +8,9 @@ target/
 
 # Python
 __pycache__/
+
+# Secrets
+.env
+
+# Raw art straight from Gemini (the cut-out versions live in dashboard/web/assets)
+dashboard/tools/raw/

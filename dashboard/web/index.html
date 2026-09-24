@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GlowyMacgOrb</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Everything lives in a fixed 1920x1080 scene that scales to fit the screen. -->
+<div id="scene">
+  <div id="world">
+    <div id="bg"></div>
+    <div id="friends"></div>
+    <div id="glowy"><div class="bob"><div class="fairy"><img src="assets/glowy.png" alt="Glowy"><span class="core"></span></div></div><div class="bubble"></div></div>
+  </div>
+  <canvas id="fx" width="1920" height="1080"></canvas>
+  <div id="vignette"></div>
+  <div id="dim"></div>
+  <div id="flash"></div>
+
+  <div id="title">
+    <div class="name">GlowyMacgOrb</div>
+    <div class="tag">a garden that grows with care</div>
+  </div>
+
+  <div id="hud">
+    <div class="stage-name" id="stageName">Bare soil</div>
+    <div class="count" id="friendCount">no friends yet</div>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <div id="narration"></div>
+
+  <div id="card" class="hidden">
+    <div class="portrait"><img id="cardImg" alt=""></div>
+    <div class="body">
+      <div class="kicker" id="cardKicker">Glowy brought a friend!</div>
+      <div class="name" id="cardName"></div>
+      <p class="thanks" id="cardThanks"></p>
+      <div class="fact" id="cardFact"><span>Why we're grateful</span><p id="cardFactText"></p></div>
+    </div>
+  </div>
+</div>
+
+<div id="status" class="off">looking for the bridge…</div>
+<div id="start">
+  <div class="start-title">GlowyMacgOrb</div>
+  <div class="start-hint">click anywhere to begin</div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
