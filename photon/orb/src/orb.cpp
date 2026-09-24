@@ -11,7 +11,10 @@
 #include "Particle.h"
 #include "neopixel.h"
 
-SYSTEM_MODE(SEMI_AUTOMATIC); // stays offline: no Wi-Fi/cloud needed. Flash over USB.
+// Stay connected to the Particle cloud so the orb can be re-flashed over the air (no USB
+// needed). With the system thread on, the lights and Bluetooth run whether or not Wi-Fi is up.
+SYSTEM_MODE(AUTOMATIC);
+SYSTEM_THREAD(ENABLED);
 
 // ---------- tweak these ----------
 #define PIXEL_COUNT 20

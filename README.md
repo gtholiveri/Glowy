@@ -50,11 +50,17 @@ Back = exit. The screen also shows whether the strip's 5V is on.
 Strip data → D2 (SPI1). Set `PIXEL_COUNT` at the top of `src/orb.cpp`.
 ```
 particle login
+particle list                  # find the orb's device name, e.g. p2348 (must say "online")
 cd photon/orb
-particle flash --local
+particle flash p2348           # compiles in the cloud and flashes over the air
 ```
-(Compiles in the cloud, flashes over USB. The `neopixel` library comes in automatically
-from `project.properties`.) The orb runs offline, so always flash it over USB.
+The `neopixel` library comes in automatically from `project.properties`. The firmware stays
+connected to the Particle cloud so it can always be re-flashed over the air; the lights and
+Bluetooth work with or without Wi-Fi. (`particle flash --local` flashes over USB instead.)
+
+**LED test:** `photon/led-test` lights just the first 5 LEDs, breathing orange, and flashes
+them white when the Flipper's broadcast changes or when you run `particle call p2348 flash`.
+`particle get p2348 beacons` shows how many Flipper broadcasts it has heard.
 
 Moods, picked to read through orange plastic: warm gold-orange breathing at home (bright
 swell when it lands), bright warm-white twinkle while carried, dim ember-red "come home" pulse
