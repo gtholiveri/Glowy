@@ -6,6 +6,7 @@
 //   Photon 2 and the laptop dashboard can both hear it (no pairing).
 //
 // Controls:  OK = manual trigger (Wizard-of-Oz backup)
+//            Left = LED test (first 5 blink red/green/blue/white/yellow)
 //            Up/Down = LED brightness    Back = exit
 
 #include <furi.h>
@@ -13,6 +14,7 @@
 #include <furi_hal_bt.h>
 #include <gui/gui.h>
 #include <notification/notification_messages.h>
+#include <power/power_service/power.h>
 #include <nfc/nfc.h>
 #include <nfc/nfc_poller.h>
 #include <math.h>
@@ -67,7 +69,13 @@ typedef struct {
     uint8_t seq;
     uint32_t visits;
     float brightness;
+    bool test_mode;
+
+    Power* power;
     bool otg_was_on;
+    bool otg_on; // 5V boost to GPIO pin 1 (refreshed twice a second)
+    float usb_volts; // USB also feeds pin 1 when plugged in
+    uint32_t last_power_check;
 
     float level; // 0 = waiting, 1 = orb home (eased)
     float phase; // breathing phase, integrated so the tempo can change smoothly
@@ -77,30 +85,32 @@ typedef struct {
 } App;
 
 // ---------- WS2812 bit-bang ----------
-// 64 MHz core: one bit = 1.25 us = 80 cycles. Timed off the DWT cycle counter
-// with interrupts off for the ~1.4 ms it takes to push a frame.
+// 64 MHz core, timed off the DWT cycle counter with interrupts off for the
+// ~1.5 ms it takes to push a frame. Each high pulse is measured from the moment
+// the pin actually goes high, so loop overhead can only stretch the low time
+// (which the LEDs don't care about), never shorten a pulse.
 #define CPU_MHZ 64
-#define WS_T0H  (CPU_MHZ * 40 / 100)
-#define WS_T1H  (CPU_MHZ * 80 / 100)
-#define WS_BIT  (CPU_MHZ * 125 / 100)
+#define WS_T0H  (CPU_MHZ * 35 / 100) // 0.35 us
+#define WS_T1H  (CPU_MHZ * 75 / 100) // 0.75 us
+#define WS_BIT  (CPU_MHZ * 130 / 100) // 1.30 us per bit
 
 static void ws2812_send(const uint8_t* grb, size_t len) {
     GPIO_TypeDef* port = LED_PIN->port;
     const uint32_t mask = LED_PIN->pin;
 
     __disable_irq();
-    uint32_t t = DWT->CYCCNT;
+    uint32_t start = DWT->CYCCNT - WS_BIT; // first bit starts right away
     for(size_t i = 0; i < len; i++) {
         const uint8_t byte = grb[i];
         for(uint8_t bit = 0x80; bit; bit >>= 1) {
             const uint32_t high = (byte & bit) ? WS_T1H : WS_T0H;
-            while((int32_t)(DWT->CYCCNT - t) < 0) {
+            while((DWT->CYCCNT - start) < WS_BIT) {
             }
+            start = DWT->CYCCNT;
             port->BSRR = mask;
-            while((DWT->CYCCNT - t) < high) {
+            while((DWT->CYCCNT - start) < high) {
             }
             port->BRR = mask;
-            t += WS_BIT;
         }
     }
     __enable_irq();
@@ -250,19 +260,37 @@ static void draw_callback(Canvas* canvas, void* context) {
 
     canvas_clear(canvas);
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "GlowyMacgOrb");
+    canvas_draw_str_aligned(canvas, 64, 1, AlignCenter, AlignTop, "GlowyMacgOrb");
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str_aligned(
-        canvas, 64, 20, AlignCenter, AlignTop, app->present ? "The orb is home" : "Waiting for the orb...");
-    snprintf(line, sizeof(line), "visits: %lu   light: %d%%", app->visits, (int)(app->brightness * 100));
-    canvas_draw_str_aligned(canvas, 64, 34, AlignCenter, AlignTop, line);
+        canvas, 64, 14, AlignCenter, AlignTop, app->present ? "The orb is home" : "Waiting for the orb...");
+
+    // Power diagnostics: the strip needs 5V on pin 1, from the boost or from USB.
+    const int usb_tenths = (int)(app->usb_volts * 10.0f + 0.5f);
+    snprintf(
+        line,
+        sizeof(line),
+        "5V boost: %s  USB: %d.%dV",
+        app->otg_on ? "on" : "OFF",
+        usb_tenths / 10,
+        usb_tenths % 10);
+    canvas_draw_str_aligned(canvas, 64, 26, AlignCenter, AlignTop, line);
+
+    snprintf(
+        line,
+        sizeof(line),
+        "visits: %lu  light: %d%%%s",
+        app->visits,
+        (int)(app->brightness * 100),
+        app->test_mode ? "  TEST" : "");
+    canvas_draw_str_aligned(canvas, 64, 38, AlignCenter, AlignTop, line);
     canvas_draw_str_aligned(
         canvas,
         64,
-        50,
+        51,
         AlignCenter,
         AlignTop,
-        app->manual ? "MANUAL ON - OK to release" : "OK: manual   Up/Dn: light");
+        app->manual ? "MANUAL ON - OK to release" : "OK manual  < test  ^v light");
 }
 
 static void input_callback(InputEvent* event, void* context) {
@@ -285,9 +313,11 @@ int32_t glowymacgorb_app(void* p) {
     app->notifications = furi_record_open(RECORD_NOTIFICATION);
     notification_message(app->notifications, &sequence_display_backlight_enforce_on);
 
-    // 5V out on GPIO pin 1 for the strip
-    app->otg_was_on = furi_hal_power_is_otg_enabled();
-    if(!app->otg_was_on) furi_hal_power_enable_otg();
+    // 5V out on GPIO pin 1 for the strip, requested through the power service
+    // (it owns the boost; flipping it at the HAL level can get undone)
+    app->power = furi_record_open(RECORD_POWER);
+    app->otg_was_on = power_is_otg_enabled(app->power);
+    if(!app->otg_was_on) power_enable_otg(app->power, true);
     furi_hal_gpio_init(LED_PIN, GpioModeOutputPushPull, GpioPullNo, GpioSpeedVeryHigh);
     furi_hal_gpio_write(LED_PIN, false);
 
@@ -311,6 +341,9 @@ int32_t glowymacgorb_app(void* p) {
             case InputKeyOk:
                 app->manual = !app->manual;
                 break;
+            case InputKeyLeft:
+                app->test_mode = !app->test_mode;
+                break;
             case InputKeyUp:
                 app->brightness = clamp01(app->brightness + 0.1f);
                 break;
@@ -327,8 +360,29 @@ int32_t glowymacgorb_app(void* p) {
         if(dt > 0.1f) dt = 0.1f;
         last_frame = now;
 
+        if(now - app->last_power_check > 500) {
+            app->last_power_check = now;
+            app->otg_on = furi_hal_power_is_otg_enabled();
+            app->usb_volts = furi_hal_power_get_usb_voltage();
+            // If the boost tripped (e.g. inrush when the strip connects), ask again.
+            if(!app->otg_on && app->usb_volts < 4.0f) power_enable_otg(app->power, true);
+        }
+
         update_presence(app);
         render(app, dt);
+        if(app->test_mode) {
+            // First 5 LEDs blink red, green, blue, white, yellow; the rest stay off.
+            // Wrong colors in that order = the strip uses a different color order.
+            static const uint8_t test_rgb[5][3] = {
+                {64, 0, 0}, {0, 64, 0}, {0, 0, 64}, {48, 48, 48}, {64, 48, 0}};
+            const bool on = (now / 500) % 2 == 0;
+            memset(app->frame, 0, sizeof(app->frame));
+            for(int i = 0; i < 5 && i < LED_COUNT; i++) {
+                app->frame[i * 3 + 0] = on ? test_rgb[i][1] : 0;
+                app->frame[i * 3 + 1] = on ? test_rgb[i][0] : 0;
+                app->frame[i * 3 + 2] = on ? test_rgb[i][2] : 0;
+            }
+        }
         ws2812_send(app->frame, sizeof(app->frame));
         view_port_update(app->view_port);
     }
@@ -344,7 +398,8 @@ int32_t glowymacgorb_app(void* p) {
     memset(app->frame, 0, sizeof(app->frame));
     ws2812_send(app->frame, sizeof(app->frame));
     furi_hal_gpio_init_simple(LED_PIN, GpioModeAnalog);
-    if(!app->otg_was_on) furi_hal_power_disable_otg();
+    if(!app->otg_was_on) power_enable_otg(app->power, false);
+    furi_record_close(RECORD_POWER);
 
     notification_message(app->notifications, &sequence_reset_rgb);
     notification_message(app->notifications, &sequence_display_backlight_enforce_auto);
