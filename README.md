@@ -9,6 +9,8 @@ Flipper (in the flower) ──BLE broadcast "orb home/away"──► Photon 2 (i
 No pairing and no USB at demo time: the Flipper broadcasts its state ~10×/s and
 anything nearby just listens.
 
+**Wiring, power and placement: see [WIRING.md](WIRING.md).**
+
 ## Setup (once)
 ```
 pip install ufbt bleak
