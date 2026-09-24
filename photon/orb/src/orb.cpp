@@ -1,9 +1,10 @@
 // GlowyMacgOrb — orb (Particle Photon 2 on battery)
 //
-// Glowy rides in this orb. It listens for the Flipper's BLE broadcast and shows her mood:
-//   home on the flower  -> warm rose, slow breathing, with a bright swell the moment she lands
-//   out exploring       -> bright, curious teal-white with little twinkles
-//   away over a minute  -> homesick: dim amber, slow "come home" pulse
+// Glowy rides in this orb (her lantern). It listens for the Flipper's BLE broadcast and shows
+// her mood. Colors are picked to read through orange plastic, which swallows blues:
+//   home on the flower  -> warm gold-orange, slow breathing, bright swell the moment she lands
+//   out exploring       -> bright warm white with little twinkles
+//   away over a minute  -> homesick: dim ember red, slow "come home" pulse
 //
 // Needs the "neopixel" library (Particle Workbench: Install Library -> neopixel).
 
@@ -21,9 +22,9 @@ const uint32_t LOST_MS = 5000; // no broadcast for this long -> act as if away
 const uint32_t HOMESICK_MS = 60000; // matches the dashboard's "Glowy's getting sleepy"
 // ----------------------------------
 
-const float HOME_C[3] = {1.00f, 0.30f, 0.38f}; // warm rose
-const float AWAKE_C[3] = {0.55f, 0.90f, 1.00f}; // curious teal-white
-const float SICK_C[3] = {1.00f, 0.55f, 0.25f}; // sleepy amber
+const float HOME_C[3] = {1.00f, 0.50f, 0.12f}; // warm gold-orange, like Glowy on screen
+const float AWAKE_C[3] = {1.00f, 0.88f, 0.62f}; // bright warm white: awake and curious
+const float SICK_C[3] = {1.00f, 0.16f, 0.03f}; // sleepy ember red
 
 const float TAU_F = 6.2831853f;
 

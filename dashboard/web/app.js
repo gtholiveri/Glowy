@@ -3,20 +3,20 @@
 /* GlowyMacgOrb dashboard.
 
    Glowy is a tiny fairy of light who lives in the rose and can't fly yet; the
-   orb is her lantern. Lift it and she goes exploring with you. Bring it back and
-   she returns with a new friend, who thanks you, shares why we're grateful for
-   them, and moves into the garden. Every few friends the garden grows a stage.
-   Friends chat with each other (Gemini through bridge.py, built-in lines as a
-   fallback).
+   orb is her lantern. Lift it and she goes exploring with you, somewhere in the
+   garden. Bring it back and she returns with the friend she found there, who
+   moves in. Every few friends the garden grows a stage.
 
    Presenter keys: Space = lift/return the orb by hand   F = a friend arrives now
                    0-5 = jump to a garden stage          R R = reset the garden
-                   H = hide the status line   M = mute   C = chatter now */
+                   H = hide the status line   M = mute */
 
 // ---------- scene layout (1920x1080 design space, matched to the art) ----------
 const W = 1920;
 const H = 1080;
-const GLOWY_HOME = { x: 970, y: 420 }; // Glowy hovers just above the rose
+const LANTERN = { x: 970, y: 365 }; // Glowy's lantern (the orb's twin) rests on the rose
+const GLOWY_HOME = { x: 970, y: 270 }; // Glowy hovers just above her lantern
+const GLOWY_CORE_Y = GLOWY_HOME.y - 179 * 0.455; // her glowing core (see #glowy in style.css)
 const FLOWER = { x: 970, y: 520 }; // center of the rose, where light bursts from
 const POP = { x: 1170, y: 470 }; // where a new friend first appears, beside Glowy
 const MIN_TRIP_MS = 2000; // shorter trips don't bring back a friend
@@ -32,131 +32,31 @@ const STAGES = [
   { name: "Full bloom", need: 9, fireflies: 55 },
 ];
 
-// x, y = where the friend stands (bottom center), h = sprite height.
+// x, y = where the friend lives (bottom center), h = sprite height.
+// where / at = the part of the garden Glowy explores to find them.
 const FRIENDS = {
-  earthworm: {
-    name: "Earthworm", x: 470, y: 880, h: 150, voice: 330,
-    desc: "a shy, sweet earthworm who lives in the soil and loves compost",
-    thanks: "Nobody ever visits me down here. Thank you for bringing her!",
-    fact: "Earthworms pull fallen leaves underground and turn them into rich soil, and their tunnels let air and rain reach plant roots.",
-  },
-  bee: {
-    name: "Bumblebee", x: 380, y: 660, h: 125, fly: true, voice: 520,
-    desc: "a round, cheerful bumblebee who hums a lot and loves flowers",
-    thanks: "You carried Glowy all the way to my flowers? Thank you!",
-    fact: "Bumblebees can 'buzz' a flower, shaking their flight muscles until the pollen falls out. Tomatoes and blueberries grow better thanks to it.",
-  },
-  snail: {
-    name: "Snail", x: 1310, y: 830, h: 120, voice: 260,
-    desc: "a slow, polite snail with a glowing crystal shell",
-    thanks: "I'm far too slow to ever reach the rose. Thank you for bringing Glowy to me.",
-    fact: "Snails nibble dead leaves and old plants, helping turn them back into food for the soil.",
-  },
-  frog: {
-    name: "Frog", x: 1390, y: 915, h: 140, voice: 200,
-    desc: "a bubbly pond frog who says ribbit and loves the pond",
-    thanks: "Ribbit! Thank you for the visit. The pond felt lonely tonight.",
-    fact: "Frogs don't drink with their mouths: they soak up water through their skin. They also eat lots of garden pests.",
-  },
-  moth: {
-    name: "Moth", x: 1480, y: 520, h: 150, fly: true, voice: 600,
-    desc: "a dreamy, fluffy night moth who loves moonlight",
-    thanks: "I saw her glow from across the garden. Thank you for sharing her light.",
-    fact: "Moths are the night shift of pollination: many flowers that bloom after dark are visited by moths.",
-  },
-  bat: {
-    name: "Fruit Bat", x: 330, y: 470, h: 160, fly: true, voice: 760,
-    desc: "a fluffy fruit bat who is awake all night and loves fruit",
-    thanks: "I'm up all night and hardly anyone says hi. Thank you!",
-    fact: "Fruit bats spread the seeds of the fruit they eat, planting new trees wherever they fly.",
-  },
-  ladybug: {
-    name: "Ladybug", x: 1160, y: 690, h: 85, voice: 880,
-    desc: "an energetic little ladybug who guards the plants from aphids",
-    thanks: "A visit? For me? Thank you, thank you!",
-    fact: "One ladybug can eat thousands of aphids in its life, protecting plants without any spray.",
-  },
-  mushroom: {
-    name: "Mushroom", x: 400, y: 1010, h: 150, voice: 420,
-    desc: "a bouncy little mushroom who says the underground roots are best friends",
-    thanks: "Hello up there! Thank you for carrying such a little light so carefully.",
-    fact: "Underground, fungi link plant roots into a huge network, trading water and minerals for the plants' sugar.",
-  },
-  firefly: {
-    name: "Firefly", x: 1240, y: 430, h: 95, fly: true, voice: 980,
-    desc: "a tiny firefly who loves to glow along with Glowy",
-    thanks: "Another little light! Thank you. Now I have a friend to glow with.",
-    fact: "A firefly's glow is 'cold light': almost all of its energy becomes light, with barely any heat.",
-  },
-  spider: {
-    name: "Garden Spider", x: 680, y: 560, h: 140, voice: 460,
-    desc: "a friendly garden spider who knits webs and is a little misunderstood",
-    thanks: "Most folks run away from me. You brought me a friend instead. Thank you.",
-    fact: "Garden spiders catch flies and pests all night, and their silk is stronger than steel for its weight.",
-  },
-  luna_moth: {
-    name: "Luna Moth", rare: true, x: 1650, y: 620, h: 175, fly: true, voice: 700,
-    desc: "a rare, elegant luna moth, gentle and wise",
-    thanks: "I only get one week to see the world. Thank you for sharing a moment of it with me.",
-    fact: "Grown-up luna moths have no mouths. They don't eat at all, and live for only about a week.",
-  },
-  tortoise: {
-    name: "Ancient Tortoise", rare: true, x: 1720, y: 900, h: 150, voice: 150,
-    desc: "an ancient, slow, wise tortoise with flowers growing on its shell",
-    thanks: "I have waited a very long time for a visit like this. Thank you, little one.",
-    fact: "Some tortoises live for more than 150 years, longer than almost any other animal on land.",
-  },
+  earthworm: { name: "Earthworm", x: 470, y: 880, h: 150, where: "the soft soil", at: "in the soft soil" },
+  bee: { name: "Bumblebee", x: 380, y: 660, h: 125, where: "the flower patch", at: "in the flower patch" },
+  snail: { name: "Snail", x: 1310, y: 830, h: 120, where: "the mossy stones", at: "on the mossy stones" },
+  frog: { name: "Frog", x: 1390, y: 915, h: 140, where: "the pond", at: "by the pond" },
+  moth: { name: "Moth", x: 1480, y: 520, h: 150, where: "the moonlit meadow", at: "in the moonlit meadow" },
+  bat: { name: "Fruit Bat", x: 330, y: 470, h: 160, where: "the old tree", at: "up in the old tree" },
+  ladybug: { name: "Ladybug", x: 1160, y: 690, h: 85, where: "the leaves", at: "on the leaves" },
+  mushroom: { name: "Mushroom", x: 400, y: 1010, h: 150, where: "under the ferns", at: "under the ferns" },
+  firefly: { name: "Firefly", x: 1240, y: 430, h: 95, where: "the tall grass", at: "in the tall grass" },
+  spider: { name: "Garden Spider", x: 680, y: 560, h: 140, where: "the branches", at: "in the branches" },
+  luna_moth: { name: "Luna Moth", rare: true, x: 1650, y: 620, h: 175, where: "the starry sky", at: "under the stars" },
+  tortoise: { name: "Ancient Tortoise", rare: true, x: 1720, y: 900, h: 150, where: "the far edge of the garden", at: "at the edge of the garden" },
 };
 // The first friends arrive in an order that matches what each stage adds
 // (worm -> sprouts, bee -> meadow, frog -> pond, bat -> tree, firefly -> full bloom).
 const ORDER = ["earthworm", "bee", "snail", "frog", "moth", "bat", "ladybug", "mushroom", "firefly", "spider"];
 const RARE = ["luna_moth", "tortoise"];
-const GLOWY = { name: "Glowy", voice: 1100, desc: "Glowy, a tiny fairy of warm light who lives in the rose and can't fly yet" };
 
-const ATTRACT = [
-  "Glowy can't fly yet… carry her lantern into the garden.",
-  "Lift the orb and take Glowy exploring.",
-  "Every trip, Glowy makes a new friend.",
-];
-const LIFT = ["Glowy's out exploring with you!", "Show Glowy the garden!", "Off you go! Glowy has never been this far."];
-const AWAY = ["The garden is waiting for Glowy…", "Who will Glowy meet out there?"];
-const HOMESICK = "Glowy's getting sleepy… bring her home?";
-const QUICK = "Back so soon? Take Glowy a little farther next time!";
-const FULL = "Everyone's here. The garden is full of friends.";
-const BYE = ["Bye, Glowy! Bring back someone nice!", "Have fun out there, Glowy!", "Carry her gently!", "Say hi to everyone for us!"];
-const HELLO = ["Hi, everyone!", "What a lovely garden!", "Thank you for having me!"];
-
-// Built-in chatter, used whenever Gemini isn't available.
-const FALLBACK = [
-  { s: "glowy", t: "Thank you all for keeping me company." },
-  { s: "glowy", t: "I wonder who we'll meet next time!" },
-  { s: "glowy", t: "The rose feels warmer with all of you here." },
-  { s: "earthworm", t: "The soil's extra cozy tonight. You're welcome, roots!" },
-  { s: "earthworm", t: "Thank you, fallen leaves. Delicious." },
-  { s: "bee", t: "Bzz! These flowers smell like thank-you notes." },
-  { s: "bee", t: "Thank you, flowers! Same time tomorrow?" },
-  { s: "snail", t: "I'll get there. Eventually. Thank you for waiting." },
-  { s: "snail", t: "My shell glows brighter when Glowy's home." },
-  { s: "frog", t: "Ribbit! The pond says hello to everyone." },
-  { s: "frog", t: "I caught three mosquitoes. You're all welcome. Ribbit." },
-  { s: "moth", t: "The moonlight is so soft tonight." },
-  { s: "moth", t: "Thank you, night flowers, for staying open for me." },
-  { s: "bat", t: "Good night? Good morning? Hi, everyone!" },
-  { s: "bat", t: "I'll plant us a fig tree. Just give me time." },
-  { s: "ladybug", t: "Aphid patrol reporting! The leaves are safe." },
-  { s: "mushroom", t: "Psst. The tree roots say thank you." },
-  { s: "mushroom", t: "Underground news: everyone's roots are holding hands." },
-  { s: "firefly", t: "Glow buddies! Blink twice if you're happy." },
-  { s: "firefly", t: "I learned my best glow from Glowy." },
-  { s: "spider", t: "I knitted a web. It says 'welcome.'" },
-  { s: "spider", t: "Thank you for not running away. It means a lot." },
-  { s: "luna_moth", t: "Every moment here is a gift." },
-  { s: "tortoise", t: "When I was young, this garden was one pebble. Look at it now." },
-  { s: "any", t: "Thank you, {other}, for everything you do here." },
-  { s: "any", t: "Has anyone seen how bright the rose is tonight?" },
-  { s: "any", t: "{other}, you're my favorite neighbor." },
-  { s: "any", t: "I'm grateful for this garden. And for snacks." },
-];
+const ATTRACT = ["Lift Glowy's lantern to take her exploring", "Every trip, Glowy finds a new friend"];
+const HOMESICK = "Glowy's getting sleepy… bring her lantern home";
+const QUICK = "Too quick! Take Glowy a little farther";
+const FULL = "Every friend has come home";
 
 // ---------- helpers ----------
 const $ = (id) => document.getElementById(id);
@@ -166,12 +66,12 @@ const pick = (list) => list[Math.floor(Math.random() * list.length)];
 const sceneEl = $("scene");
 const friendsEl = $("friends");
 const glowyEl = $("glowy");
+const lanternEl = $("lantern");
 const dimEl = $("dim");
 const flashEl = $("flash");
 const narrEl = $("narration");
 const statusEl = $("status");
 const startEl = $("start");
-const cardEl = $("card");
 
 let started = false;
 let home = true; // is the orb sitting on the flower?
@@ -179,7 +79,8 @@ let awaySince = 0;
 let homesickShown = false;
 let busy = false; // a friend-arrival sequence is running
 let shownStage = 0;
-let lastEvent = "a quiet moment in the garden";
+let nextFriend = null; // who Glowy will find on this trip, picked when she leaves
+let lastGlimmer = 0;
 const friendEls = new Map();
 
 // ---------- saved garden ----------
@@ -268,6 +169,13 @@ function updateHud() {
   }
 }
 
+function pulseHud() {
+  const hud = $("hud");
+  hud.classList.remove("grow");
+  void hud.offsetWidth;
+  hud.classList.add("grow");
+}
+
 let narrTimer = null;
 let lastNarration = 0;
 function narrate(text, hold = 0) {
@@ -285,6 +193,8 @@ function narrate(text, hold = 0) {
     show();
   }
 }
+
+const exploring = () => (nextFriend ? `Exploring ${FRIENDS[nextFriend].where}…` : "Glowy's off exploring!");
 
 function status(text, ok) {
   statusEl.textContent = text;
@@ -482,9 +392,6 @@ const Sound = (() => {
       tone(783.99, { dur: 1.2, gain: 0.06 });
       tone(659.25, { t: 0.5, dur: 1.8, gain: 0.06 });
     },
-    blip(pitch) {
-      tone(pitch * (0.9 + Math.random() * 0.25), { dur: 0.07, type: "triangle", gain: 0.05, verb: 0.1 });
-    },
     friend(id) {
       if (!live()) return;
       switch (id) {
@@ -523,7 +430,27 @@ function glowSprite(rgb) {
   }
   return glowSprites[rgb];
 }
+let heartCanvas = null;
+function heartSprite() {
+  if (!heartCanvas) {
+    heartCanvas = document.createElement("canvas");
+    heartCanvas.width = heartCanvas.height = 64;
+    const g = heartCanvas.getContext("2d");
+    g.fillStyle = "rgb(255, 150, 180)";
+    g.shadowColor = "rgba(255, 110, 150, 0.9)";
+    g.shadowBlur = 10;
+    g.beginPath();
+    g.moveTo(32, 52);
+    g.bezierCurveTo(8, 36, 8, 14, 22, 14);
+    g.bezierCurveTo(28, 14, 32, 19, 32, 23);
+    g.bezierCurveTo(32, 19, 36, 14, 42, 14);
+    g.bezierCurveTo(56, 14, 56, 36, 32, 52);
+    g.fill();
+  }
+  return heartCanvas;
+}
 const COLORS = ["255,200,215", "255,236,190", "170,255,235"];
+const GOLD = ["255,214,150", "255,180,100", "255,240,205"]; // Glowy's own light, the orb's orange
 const flies = [];
 let flyTarget = 8;
 const sparks = [];
@@ -540,8 +467,95 @@ function burst(x, y, n = 40, colors = COLORS, power = 7) {
     });
   }
 }
+// Little hearts drifting up: a friend's thank-you, without words.
+function hearts(x, y, n = 5) {
+  for (let i = 0; i < n; i++) {
+    sparks.push({
+      x: x + (Math.random() - 0.5) * 70, y: y + (Math.random() - 0.5) * 30,
+      vx: (Math.random() - 0.5) * 0.8, vy: -1.2 - Math.random() * 1.2,
+      life: 1, decay: 0.008 + Math.random() * 0.006, size: 26 + Math.random() * 16, heart: true,
+    });
+  }
+}
 function ring(x, y, color = "255,210,225", max = 1100) {
   rings.push({ x, y, r: 20, max, color });
+}
+
+// ---------- Glowy's lantern: an orange dodecahedron, the on-screen twin of the real orb ----------
+const lanternCtx = lanternEl.getContext("2d");
+const DODECA = (() => {
+  const PHI = (1 + Math.sqrt(5)) / 2;
+  const v = [];
+  for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) v.push([x, y, z]);
+  const normals = [];
+  for (const a of [-1, 1]) {
+    for (const b of [-1, 1]) {
+      v.push([0, a / PHI, b * PHI], [a / PHI, b * PHI, 0], [a * PHI, 0, b / PHI]);
+      normals.push([0, a * PHI, b], [b, 0, a * PHI], [a * PHI, b, 0]);
+    }
+  }
+  const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+  const cross = (p, q) => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]];
+  // Each face is the five corners nearest its normal, put in order around it.
+  const faces = normals.map((raw) => {
+    const n = raw.map((c) => c / Math.hypot(...raw));
+    const idx = v.map((p, i) => [dot(p, n), i]).sort((p, q) => q[0] - p[0]).slice(0, 5).map(([, i]) => i);
+    const mid = [0, 1, 2].map((k) => idx.reduce((s, i) => s + v[i][k], 0) / 5);
+    const ref = v[idx[0]].map((c, k) => c - mid[k]);
+    const angle = (i) => {
+      const d = v[i].map((c, k) => c - mid[k]);
+      return Math.atan2(dot(cross(ref, d), n), dot(ref, d));
+    };
+    return { idx: idx.sort((p, q) => angle(p) - angle(q)), n };
+  });
+  return { v, faces };
+})();
+
+function drawLantern(now) {
+  const S = lanternEl.width;
+  const c = S / 2;
+  const R = 50; // corners sit ~87 px from the center
+  const g = lanternCtx;
+  g.clearRect(0, 0, S, S);
+
+  // Glowy's light inside, breathing like the real orb
+  const pulse = 0.75 + 0.25 * Math.sin(now / 650);
+  const glow = g.createRadialGradient(c, c, 0, c, c, c);
+  glow.addColorStop(0, `rgba(255, 232, 175, ${0.95 * pulse})`);
+  glow.addColorStop(0.35, `rgba(255, 150, 50, ${0.5 * pulse})`);
+  glow.addColorStop(1, "rgba(255, 120, 30, 0)");
+  g.fillStyle = glow;
+  g.fillRect(0, 0, S, S);
+
+  const ay = now / 4200;
+  const ax = 0.45;
+  const turn = ([x, y, z]) => {
+    const x1 = x * Math.cos(ay) + z * Math.sin(ay);
+    const z1 = -x * Math.sin(ay) + z * Math.cos(ay);
+    return [x1, y * Math.cos(ax) - z1 * Math.sin(ax), y * Math.sin(ax) + z1 * Math.cos(ax)];
+  };
+  const pts = DODECA.v.map(turn);
+  const light = [-0.35, -0.6, 0.72];
+  const faces = DODECA.faces
+    .map((f) => ({ f, n: turn(f.n), z: f.idx.reduce((s, i) => s + pts[i][2], 0) / 5 }))
+    .sort((p, q) => p.z - q.z); // back faces first, so the glass reads as see-through
+  for (const { f, n } of faces) {
+    const front = n[2] > 0;
+    const lit = Math.max(0, n[0] * light[0] + n[1] * light[1] + n[2] * light[2]);
+    g.beginPath();
+    f.idx.forEach((i, k) => {
+      const x = c + pts[i][0] * R;
+      const y = c + pts[i][1] * R;
+      if (k) g.lineTo(x, y);
+      else g.moveTo(x, y);
+    });
+    g.closePath();
+    g.fillStyle = front ? `rgba(255, 150, 55, ${0.3 + 0.4 * lit})` : "rgba(200, 90, 20, 0.2)";
+    g.fill();
+    g.strokeStyle = `rgba(255, 222, 165, ${front ? 0.85 : 0.25})`;
+    g.lineWidth = front ? 2 : 1;
+    g.stroke();
+  }
 }
 
 function draw(now) {
@@ -582,7 +596,7 @@ function draw(now) {
     sparks.push({
       x: p.x + (Math.random() - 0.5) * 40, y: p.y + (Math.random() - 0.5) * 20,
       vx: (Math.random() - 0.5) * 0.6, vy: 0.4 + Math.random() * 0.6,
-      life: 1, decay: 0.012 + Math.random() * 0.01, size: 5 + Math.random() * 7, c: pick(COLORS),
+      life: 1, decay: 0.012 + Math.random() * 0.01, size: 5 + Math.random() * 7, c: pick(GOLD),
     });
   }
 
@@ -603,7 +617,7 @@ function draw(now) {
     const s = sparks[i];
     s.x += s.vx;
     s.y += s.vy;
-    s.vy += 0.04;
+    s.vy += s.heart ? -0.01 : 0.04; // hearts float up, sparkles drift down
     s.vx *= 0.985;
     s.life -= s.decay;
     if (s.life <= 0) {
@@ -611,11 +625,13 @@ function draw(now) {
       continue;
     }
     fx.globalAlpha = s.life;
-    fx.drawImage(glowSprite(s.c), s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
+    const img = s.heart ? heartSprite() : glowSprite(s.c);
+    fx.drawImage(img, s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
   }
 
   fx.globalAlpha = 1;
   fx.globalCompositeOperation = "source-over";
+  drawLantern(now);
   requestAnimationFrame(draw);
 }
 
@@ -625,20 +641,23 @@ function flash(at, rgb, strength) {
 }
 
 // ---------- characters ----------
-function spot(id, dx = 0, dy = 0, scale = 1) {
+function spot(dx = 0, dy = 0, scale = 1) {
   return `translate(-50%, -100%) translate(${dx}px, ${dy}px) scale(${scale})`;
 }
 
+// Each friend idles in its own way (style.css keys the animation off data-id);
+// .act carries one-off reactions like the happy hop.
 function makeFriendEl(id) {
   const f = FRIENDS[id];
   const el = document.createElement("div");
-  el.className = "friend" + (f.fly ? " flier" : "");
+  el.className = "friend";
+  el.dataset.id = id;
   el.style.left = `${f.x}px`;
   el.style.top = `${f.y}px`;
   el.style.height = `${f.h}px`;
   el.style.transformOrigin = "50% 100%";
-  el.innerHTML = `<div class="bob"><img src="assets/friends/${id}.png" alt=""></div><div class="bubble"></div>`;
-  el.querySelector(".bob").style.animationDelay = `${-Math.random() * 4}s`;
+  el.innerHTML = `<div class="bob"><div class="act"><img src="assets/friends/${id}.png" alt=""></div></div>`;
+  el.querySelector(".bob").style.animationDelay = `${-Math.random() * 6}s`;
   friendsEl.appendChild(el);
   return el;
 }
@@ -649,33 +668,76 @@ function rebuildFriends() {
   for (const id of garden.friends) friendEls.set(id, makeFriendEl(id));
 }
 
-function glowyFlyAway() {
-  trails.add(glowyEl);
-  const a = glowyEl.animate([
-    { transform: spot("glowy"), opacity: 1 },
-    { transform: spot("glowy", 120, -160, 1.25), opacity: 1, offset: 0.35 },
-    { transform: spot("glowy", 780, -560, 2.2), opacity: 0 },
-  ], { duration: 1400, easing: "cubic-bezier(.4,0,.6,1)", fill: "forwards" });
-  a.onfinish = () => {
-    trails.delete(glowyEl);
-    glowyEl.classList.add("gone");
-    a.cancel();
-  };
+function happy(el) {
+  const act = el.querySelector(".act");
+  act.classList.remove("happy");
+  void act.offsetWidth;
+  act.classList.add("happy");
+  act.addEventListener("animationend", () => act.classList.remove("happy"), { once: true });
 }
 
-function glowyFlyHome() {
+function lanternAt(dx = 0, dy = 0, scale = 1) {
+  return `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${scale})`;
+}
+
+// Steps run on timers, not on animation-finished events: browsers pause animations
+// while a page isn't being drawn (window covered, screen asleep), and the story
+// shouldn't freeze with them. The animations are just the visuals.
+let lanternTimers = [];
+function later(ms, fn) {
+  lanternTimers.push(setTimeout(fn, ms));
+}
+
+// Lifting the real orb: Glowy dives into her lantern and the lantern floats away with you.
+function leaveWithLantern() {
+  lanternTimers.forEach(clearTimeout);
+  lanternTimers = [];
   glowyEl.getAnimations().forEach((a) => a.cancel());
-  glowyEl.classList.remove("gone");
-  trails.add(glowyEl);
-  const a = glowyEl.animate([
-    { transform: spot("glowy", -820, 420, 2.2), opacity: 0 },
-    { transform: spot("glowy", -200, 40, 1.3), opacity: 1, offset: 0.6 },
-    { transform: spot("glowy"), opacity: 1 },
-  ], { duration: 1300, easing: "cubic-bezier(.2,.7,.3,1)" });
-  a.onfinish = () => {
-    trails.delete(glowyEl);
-    burst(GLOWY_HOME.x, GLOWY_HOME.y - 80, 24, COLORS, 4);
-  };
+  lanternEl.getAnimations().forEach((a) => a.cancel());
+  glowyEl.animate([
+    { transform: spot(), opacity: 1 },
+    { transform: spot(0, LANTERN.y - GLOWY_CORE_Y, 0.2), opacity: 0 },
+  ], { duration: 450, easing: "ease-in", fill: "forwards" });
+  later(450, () => {
+    glowyEl.classList.add("gone");
+    burst(LANTERN.x, LANTERN.y, 24, GOLD, 4);
+  });
+  trails.add(lanternEl);
+  lanternEl.animate([
+    { transform: lanternAt(), opacity: 1 },
+    { transform: lanternAt(0, -40, 1.08), opacity: 1, offset: 0.25 },
+    { transform: lanternAt(780, -600, 1.9), opacity: 0 },
+  ], { duration: 1500, delay: 380, easing: "cubic-bezier(.4,0,.6,1)", fill: "forwards" });
+  later(1900, () => {
+    trails.delete(lanternEl);
+    lanternEl.classList.add("gone");
+  });
+}
+
+// Putting the orb back: the lantern swoops home to the rose and Glowy pops out.
+function returnWithLantern() {
+  lanternTimers.forEach(clearTimeout);
+  lanternTimers = [];
+  lanternEl.getAnimations().forEach((a) => a.cancel());
+  glowyEl.getAnimations().forEach((a) => a.cancel());
+  lanternEl.classList.remove("gone");
+  glowyEl.classList.add("gone");
+  trails.add(lanternEl);
+  lanternEl.animate([
+    { transform: lanternAt(-820, 420, 1.9), opacity: 0 },
+    { transform: lanternAt(-160, 30, 1.15), opacity: 1, offset: 0.65 },
+    { transform: lanternAt(), opacity: 1 },
+  ], { duration: 900, easing: "cubic-bezier(.2,.7,.3,1)" });
+  later(900, () => {
+    trails.delete(lanternEl);
+    burst(LANTERN.x, LANTERN.y, 40, GOLD, 6);
+    glowyEl.classList.remove("gone");
+    glowyEl.animate([
+      { transform: spot(0, LANTERN.y - GLOWY_CORE_Y, 0.2), opacity: 0 },
+      { transform: spot(0, -20, 1.15), opacity: 1, offset: 0.7 },
+      { transform: spot(), opacity: 1 },
+    ], { duration: 550, easing: "ease-out" });
+  });
 }
 
 function popIn(el, id) {
@@ -683,9 +745,9 @@ function popIn(el, id) {
   const dx = POP.x - f.x;
   const dy = POP.y - f.y;
   el._pop = el.animate([
-    { transform: spot(id, dx, dy, 0), opacity: 0 },
-    { transform: spot(id, dx, dy, 1.25), opacity: 1, offset: 0.6 },
-    { transform: spot(id, dx, dy, 1), opacity: 1 },
+    { transform: spot(dx, dy, 0), opacity: 0 },
+    { transform: spot(dx, dy, 1.25), opacity: 1, offset: 0.6 },
+    { transform: spot(dx, dy, 1), opacity: 1 },
   ], { duration: 650, easing: "ease-out", fill: "forwards" });
 }
 
@@ -694,127 +756,15 @@ async function moveToSpot(el, id) {
   const dx = POP.x - f.x;
   const dy = POP.y - f.y;
   trails.add(el);
-  const a = el.animate([
-    { transform: spot(id, dx, dy, 1) },
-    { transform: spot(id, dx * 0.5, dy * 0.5 - 180, 1.08), offset: 0.5 },
-    { transform: spot(id) },
+  el.animate([
+    { transform: spot(dx, dy, 1) },
+    { transform: spot(dx * 0.5, dy * 0.5 - 180, 1.08), offset: 0.5 },
+    { transform: spot() },
   ], { duration: 1500, easing: "ease-in-out" });
   el._pop?.cancel(); // the move animation now owns the transform
-  await a.finished;
+  await wait(1500); // a timer, not a.finished: see later() above
   trails.delete(el);
   burst(f.x, f.y - f.h / 2, 30, COLORS, 5);
-}
-
-// ---------- speech ----------
-function typeText(el, text, pitch) {
-  return new Promise((resolve) => {
-    let i = 0;
-    el.textContent = "";
-    const step = () => {
-      i++;
-      el.textContent = text.slice(0, i);
-      const ch = text[i - 1];
-      if (/[a-z]/i.test(ch) && i % 2 === 0) Sound.blip(pitch);
-      if (i < text.length) setTimeout(step, ",.!?…".includes(ch) ? 130 : 34);
-      else resolve();
-    };
-    step();
-  });
-}
-
-function hideBubbles() {
-  document.querySelectorAll(".bubble.on").forEach((b) => b.classList.remove("on"));
-}
-
-async function say(id, text) {
-  const host = id === "glowy" ? glowyEl : friendEls.get(id);
-  if (!host || (id === "glowy" && !home)) return;
-  const who = id === "glowy" ? GLOWY : FRIENDS[id];
-  hideBubbles();
-  const b = host.querySelector(".bubble");
-  clearTimeout(b._hide);
-  b.innerHTML = '<span class="who"></span><span class="txt"></span>';
-  b.querySelector(".who").textContent = who.name;
-  b.classList.add("on");
-  await typeText(b.querySelector(".txt"), text, who.voice);
-  b._hide = setTimeout(() => b.classList.remove("on"), 2200 + text.length * 45);
-}
-
-// ---------- chatter ----------
-const chat = { queue: [], lastFetch: -1e9, fetching: false, recent: [] };
-
-function cast() {
-  return [...(home ? ["glowy"] : []), ...garden.friends];
-}
-
-async function refill(eventText) {
-  if (chat.fetching || location.protocol === "file:") return;
-  if (!eventText && performance.now() - chat.lastFetch < 20000) return;
-  const who = cast();
-  if (who.length < 2) return;
-  chat.fetching = true;
-  chat.lastFetch = performance.now();
-  try {
-    const res = await fetch("/api/chatter", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        cast: who.map((id) => ({ id, desc: id === "glowy" ? GLOWY.desc : FRIENDS[id].desc })),
-        event: eventText || lastEvent,
-        n: 8,
-      }),
-    });
-    const data = await res.json();
-    if (data.lines && data.lines.length) {
-      if (eventText) chat.queue = data.lines;
-      else chat.queue.push(...data.lines);
-    }
-  } catch {
-    /* bridge offline: the built-in lines cover it */
-  } finally {
-    chat.fetching = false;
-  }
-}
-
-function fallbackLine(present) {
-  const friends = present.filter((id) => id !== "glowy");
-  const options = FALLBACK.filter((l) => (l.s === "any" ? friends.length > 0 : present.includes(l.s)))
-    .filter((l) => !chat.recent.includes(l.t));
-  if (!options.length) {
-    chat.recent = [];
-    return null;
-  }
-  const l = pick(options);
-  chat.recent = [...chat.recent.slice(-8), l.t];
-  const speaker = l.s === "any" ? pick(friends) : l.s;
-  const others = present.filter((id) => id !== speaker);
-  const otherId = others.length ? pick(others) : "glowy";
-  const other = otherId === "glowy" ? GLOWY.name : FRIENDS[otherId].name;
-  return { speaker, text: l.t.replace("{other}", other) };
-}
-
-function nextLine() {
-  const present = cast();
-  while (chat.queue.length) {
-    const l = chat.queue.shift();
-    if (present.includes(l.speaker)) return l;
-  }
-  return fallbackLine(present);
-}
-
-function chatter(force = false) {
-  if (!started || (busy && !force)) return;
-  if (cast().length === 0) return;
-  if (chat.queue.length < 3) refill();
-  const line = nextLine();
-  if (line) say(line.speaker, line.text);
-}
-
-function scheduleChatter() {
-  setTimeout(() => {
-    chatter();
-    scheduleChatter();
-  }, 5500 + Math.random() * 3500);
 }
 
 // ---------- the story ----------
@@ -828,23 +778,12 @@ function pickFriend() {
   return pick(garden.friends); // everyone's here: an old friend visits again
 }
 
-async function showCard(id, isNew) {
+function foundLine(id, isNew) {
   const f = FRIENDS[id];
-  cardEl.classList.toggle("rare", !!f.rare);
-  $("cardImg").src = `assets/friends/${id}.png`;
-  $("cardKicker").textContent = !isNew ? "An old friend came back!" : f.rare ? "A rare visitor!" : "Glowy brought a friend!";
-  $("cardName").textContent = f.name;
-  $("cardThanks").textContent = "";
-  $("cardFactText").textContent = f.fact;
-  $("cardFact").classList.remove("on");
-  cardEl.classList.remove("hidden");
-  await wait(600);
-  await typeText($("cardThanks"), `“${isNew ? f.thanks : "Thank you for visiting me again!"}”`, f.voice);
-  await wait(400);
-  $("cardFact").classList.add("on");
-  await wait(Math.max(5200, f.fact.length * 48));
-  cardEl.classList.add("hidden");
-  await wait(600);
+  const noun = f.name.toLowerCase();
+  if (!isNew) return `${f.name} came back to visit!`;
+  if (f.rare) return `A rare ${noun}, ${f.at}!`;
+  return `Glowy found ${/^[aeiou]/.test(noun) ? "an" : "a"} ${noun} ${f.at}!`;
 }
 
 async function stageUp(n) {
@@ -855,68 +794,71 @@ async function stageUp(n) {
   burst(FLOWER.x, FLOWER.y, 90, COLORS, 11);
   showStage(n);
   flyTarget = STAGES[n].fireflies;
-  narrate(`The garden grows: ${STAGES[n].name}!`, 4500);
+  narrate("The garden grows!", 4000);
+  updateHud();
+  pulseHud();
   await wait(3200);
 }
 
-async function arrival() {
+async function arrival(id) {
   busy = true;
-  hideBubbles();
-  await wait(1300); // let Glowy land first
-  const id = pickFriend();
+  await wait(1600); // let the lantern land and Glowy pop out first
   const f = FRIENDS[id];
   const isNew = !garden.friends.includes(id);
-  narrate(isNew ? (f.rare ? "Glowy found someone rare!" : "Glowy's home, and she brought a friend!") : `${f.name} came back to say thank you!`, 6000);
 
   const el = makeFriendEl(id);
   popIn(el, id);
   Sound.friend(id);
-  burst(POP.x, POP.y - f.h / 2, 50, COLORS, 8);
-  await wait(900);
-  await showCard(id, isNew);
+  burst(POP.x, POP.y - f.h / 2, 40, COLORS, 7);
+  hearts(POP.x, POP.y - f.h * 0.8, 6);
+  narrate(foundLine(id, isNew), 5000);
+  await wait(700);
+  happy(el);
+  await wait(2300);
   await moveToSpot(el, id);
 
   if (isNew) {
     garden.friends.push(id);
     friendEls.set(id, el);
     save();
-    say(id, pick(HELLO));
   } else {
-    el.remove(); // the friend was already living here
-    say(id, "Thank you again!");
+    el.remove(); // the friend already lives here
+  }
+  const settled = friendEls.get(id);
+  if (settled) {
+    happy(settled);
+    hearts(f.x, f.y - f.h, 4);
   }
   updateHud();
   const st = stageIndex();
   if (st > shownStage) await stageUp(st);
-
-  lastEvent = isNew ? `${f.name} just moved into the garden after meeting Glowy` : `${f.name} came back to visit`;
-  refill(lastEvent);
-  if (garden.friends.length === ORDER.length + RARE.length) narrate(FULL, 6000);
+  if (isNew && garden.friends.length === ORDER.length + RARE.length) narrate(FULL, 6000);
+  nextFriend = null;
   busy = false;
 }
 
 function onLift() {
   awaySince = performance.now();
   homesickShown = false;
+  if (!nextFriend) nextFriend = pickFriend();
   Sound.lift();
-  flash(GLOWY_HOME, "160,255,235", 0.35);
-  burst(GLOWY_HOME.x, GLOWY_HOME.y - 80, 30, ["190,255,240", "255,240,210"], 6);
-  glowyEl.querySelector(".bubble").classList.remove("on");
-  glowyFlyAway();
+  flash(LANTERN, "255,200,130", 0.35);
+  burst(LANTERN.x, LANTERN.y, 30, GOLD, 6);
+  leaveWithLantern();
   dimEl.classList.add("on");
-  narrate(pick(LIFT), 7000);
-  lastEvent = "a visitor just picked up Glowy's lantern and carried her off to explore";
-  const f = pick(garden.friends);
-  if (f) setTimeout(() => !busy && say(f, pick(BYE)), 1100);
+  narrate("Glowy's off exploring!");
+  setTimeout(() => {
+    if (!home && !homesickShown) narrate(exploring());
+  }, 2600);
 }
 
 function welcomeHome() {
   Sound.home();
-  flash(FLOWER, "255,215,225", 0.75);
+  flash(LANTERN, "255,215,170", 0.75); // instant: the moment the orb touches the flower
   ring(FLOWER.x, FLOWER.y);
   burst(FLOWER.x, FLOWER.y, 70, COLORS, 9);
   dimEl.classList.remove("on");
-  glowyFlyHome();
+  returnWithLantern();
 }
 
 function onReturn() {
@@ -924,10 +866,10 @@ function onReturn() {
   welcomeHome();
   if (busy) return;
   if (trip < MIN_TRIP_MS) {
-    narrate(QUICK, 5000);
+    narrate(QUICK, 4500);
     return;
   }
-  arrival();
+  arrival(nextFriend || pickFriend());
 }
 
 function setHome(isHome, silent = false) {
@@ -936,6 +878,7 @@ function setHome(isHome, silent = false) {
   if (!home) awaySince = performance.now();
   if (silent) {
     glowyEl.classList.toggle("gone", !home);
+    lanternEl.classList.toggle("gone", !home);
     dimEl.classList.toggle("on", !home);
     return;
   }
@@ -949,6 +892,7 @@ function jumpToStage(n) {
   garden.friends = ORDER.slice(0, STAGES[n].need);
   save();
   rebuildFriends();
+  nextFriend = null;
   shownStage = n;
   showStage(n, true);
   flyTarget = STAGES[n].fireflies;
@@ -961,11 +905,12 @@ function resetGarden() {
   garden = { friends: [] };
   save();
   rebuildFriends();
+  nextFriend = null;
   shownStage = 0;
   showStage(0, true);
   flyTarget = STAGES[0].fireflies;
   updateHud();
-  narrate("A new garden, waiting to grow.", 4000);
+  narrate("A new garden, waiting to grow", 4000);
 }
 
 function forceFriend() {
@@ -978,7 +923,7 @@ function forceFriend() {
     flash(FLOWER, "255,215,225", 0.6);
     ring(FLOWER.x, FLOWER.y);
   }
-  arrival();
+  arrival(nextFriend || pickFriend());
 }
 
 let resetArmed = 0;
@@ -993,12 +938,11 @@ document.addEventListener("keydown", (e) => {
   } else if (e.code === "KeyF") forceFriend();
   else if (e.code === "KeyH") document.body.classList.toggle("clean");
   else if (e.code === "KeyM") Sound.toggleMute();
-  else if (e.code === "KeyC") chatter(true);
   else if (e.code === "KeyR") {
     if (performance.now() - resetArmed < 2000) resetGarden();
     else {
       resetArmed = performance.now();
-      narrate("Press R again to reset the garden.", 2000);
+      narrate("Press R again to reset the garden", 2000);
     }
   } else if (/^Digit[0-5]$/.test(e.code)) jumpToStage(Number(e.code.slice(5)));
 });
@@ -1041,12 +985,22 @@ function connect() {
 setInterval(() => {
   if (!started) return;
   const now = performance.now();
-  if (!home && !homesickShown && now - awaySince > HOMESICK_MS) {
-    homesickShown = true;
-    narrate(HOMESICK);
-    Sound.homesick();
+  if (!home) {
+    if (!homesickShown && now - awaySince > HOMESICK_MS) {
+      homesickShown = true;
+      narrate(HOMESICK);
+      Sound.homesick();
+    }
+    // A shimmer where Glowy is exploring hints at who she'll find there.
+    if (nextFriend && now - lastGlimmer > 1400) {
+      lastGlimmer = now;
+      const f = FRIENDS[nextFriend];
+      burst(f.x + (Math.random() - 0.5) * 80, f.y - f.h * 0.5 + (Math.random() - 0.5) * 60, 8, COLORS, 2.5);
+    }
   }
-  if (!busy && now - lastNarration > 26000) narrate(home ? pick(ATTRACT) : pick(AWAY), 9000);
+  if (!busy && now - lastNarration > 26000) {
+    narrate(home ? pick(ATTRACT) : homesickShown ? HOMESICK : exploring(), 9000);
+  }
 }, 500);
 
 // ---------- start ----------
@@ -1060,13 +1014,14 @@ function start() {
   } catch {
     /* fullscreen is optional */
   }
-  narrate(home ? pick(ATTRACT) : pick(AWAY), 9000);
-  scheduleChatter();
+  narrate(home ? pick(ATTRACT) : exploring(), 9000);
 }
 startEl.addEventListener("click", start);
 
 glowyEl.style.left = `${GLOWY_HOME.x}px`;
 glowyEl.style.top = `${GLOWY_HOME.y}px`;
+lanternEl.style.left = `${LANTERN.x}px`;
+lanternEl.style.top = `${LANTERN.y}px`;
 fit();
 rebuildFriends();
 shownStage = stageIndex();

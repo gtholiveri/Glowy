@@ -4,8 +4,6 @@
   --rose: #ff9aa8;
   --gold: #ffe0a3;
   --ink: #fdf8f2;
-  --card-ink: #3a2a3f;
-  --glass: rgba(255, 250, 246, 0.86);
 }
 
 * { box-sizing: border-box; }
@@ -61,29 +59,139 @@ html, body {
   position: absolute;
   transform: translate(-50%, -100%);
 }
-.friend img {
-  display: block;
-  height: 100%;
-  width: auto;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
-}
-.friend .bob, #glowy .bob { height: 100%; animation: bob 3.6s ease-in-out infinite; }
-@keyframes bob {
-  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
-  50% { transform: translateY(-8px) rotate(1.5deg); }
-}
-.friend.flier .bob { animation: hover 4.4s ease-in-out infinite; }
 @keyframes hover {
   0%, 100% { transform: translate(0, 0) rotate(-3deg); }
   33% { transform: translate(10px, -14px) rotate(2deg); }
   66% { transform: translate(-8px, -6px) rotate(-1deg); }
 }
 
+/* Friends don't talk; each one idles in its own way. .bob carries the idle loop,
+   .act one-off reactions (the happy hop), img fast motion like wingbeats. */
+.friend .bob, .friend .act { height: 100%; transform-origin: 50% 100%; }
+.friend img {
+  display: block;
+  height: 100%;
+  width: auto;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+}
+.friend .bob { animation: breathe 3.6s ease-in-out infinite; }
+@keyframes breathe { 50% { transform: scale(1.03, 0.97); } }
+
+.friend .act.happy { animation: happy 0.8s ease-out 2; }
+@keyframes happy {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  20% { transform: scale(1.12, 0.86); }
+  45% { transform: translateY(-46px) scale(0.94, 1.08); }
+  75% { transform: translateY(0) scale(1.08, 0.92); }
+}
+
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) rotate(-3deg); }
+  33% { transform: translate(16px, -20px) rotate(3deg); }
+  66% { transform: translate(-14px, -8px) rotate(-1deg); }
+}
+@keyframes flap { to { transform: scaleX(0.72); } }
+
+/* earthworm: wriggles */
+.friend[data-id="earthworm"] .bob { animation: wriggle 2.6s ease-in-out infinite; }
+@keyframes wriggle {
+  25% { transform: skewX(7deg) scaleY(1.06); }
+  50% { transform: skewX(0deg) scaleY(0.95); }
+  75% { transform: skewX(-7deg) scaleY(1.04); }
+}
+
+/* bee: buzzes around in little loops */
+.friend[data-id="bee"] .bob { animation: buzzloop 4.8s ease-in-out infinite; }
+.friend[data-id="bee"] img { animation: jitter 0.11s linear infinite; }
+@keyframes buzzloop {
+  0%, 100% { transform: translate(0, 0) rotate(-4deg); }
+  25% { transform: translate(30px, -18px) rotate(3deg); }
+  50% { transform: translate(0, -32px) rotate(-2deg); }
+  75% { transform: translate(-30px, -14px) rotate(4deg); }
+}
+@keyframes jitter { 50% { transform: translateY(-2px); } }
+
+/* snail: creeps back and forth, turning around at each end */
+.friend[data-id="snail"] .bob { animation: creep 12s ease-in-out infinite; }
+@keyframes creep {
+  0%, 100% { transform: translateX(-18px) scaleX(1); }
+  45% { transform: translateX(18px) scaleX(1); }
+  50% { transform: translateX(18px) scaleX(-1); }
+  95% { transform: translateX(-18px) scaleX(-1); }
+}
+
+/* frog: sits and breathes, hopping now and then */
+.friend[data-id="frog"] .bob { animation: froghop 5.5s ease-in-out infinite; }
+@keyframes froghop {
+  0%, 70%, 100% { transform: translateY(0) scale(1, 1); }
+  35% { transform: scale(1.03, 0.97); }
+  76% { transform: translateY(0) scale(1.12, 0.86); }
+  84% { transform: translateY(-70px) scale(0.92, 1.1); }
+  92% { transform: translateY(0) scale(1.1, 0.9); }
+}
+
+/* moth: drifts on soft wingbeats */
+.friend[data-id="moth"] .bob { animation: drift 6s ease-in-out infinite; }
+.friend[data-id="moth"] img { animation: flap 0.32s ease-in-out infinite alternate; }
+
+/* fruit bat: drifts, with a flurry of flaps every few seconds */
+.friend[data-id="bat"] .bob { animation: drift 7s ease-in-out infinite; }
+.friend[data-id="bat"] img { animation: batflap 2.8s ease-in-out infinite; }
+@keyframes batflap {
+  0%, 30%, 100% { transform: scaleX(1); }
+  8%, 22% { transform: scaleX(0.55); }
+  15% { transform: scaleX(1); }
+}
+
+/* ladybug: scuttles about */
+.friend[data-id="ladybug"] .bob { animation: scuttle 4s ease-in-out infinite; }
+@keyframes scuttle {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(12px) rotate(8deg); }
+  40% { transform: translateX(-8px) rotate(-6deg); }
+  60% { transform: translateX(4px) rotate(4deg); }
+}
+
+/* mushroom: boings, and its cap glows */
+.friend[data-id="mushroom"] .bob { animation: boing 4.2s ease-in-out infinite; }
+.friend[data-id="mushroom"] img { animation: glowviolet 3s ease-in-out infinite; }
+@keyframes boing {
+  0%, 60%, 100% { transform: translateY(0) scale(1, 1); }
+  70% { transform: translateY(0) scale(1.12, 0.84); }
+  80% { transform: translateY(-26px) scale(0.92, 1.1); }
+  90% { transform: translateY(0) scale(1.06, 0.94); }
+}
+@keyframes glowviolet {
+  50% { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 22px rgba(200, 140, 255, 0.9)); }
+}
+
+/* firefly: floats, its tail light pulsing */
+.friend[data-id="firefly"] .bob { animation: drift 5s ease-in-out infinite; }
+.friend[data-id="firefly"] img { animation: glowgreen 1.8s ease-in-out infinite; }
+@keyframes glowgreen {
+  50% { filter: drop-shadow(0 0 14px rgba(220, 255, 140, 0.95)) drop-shadow(0 0 32px rgba(200, 255, 120, 0.6)) brightness(1.2); }
+}
+
+/* spider: climbs up and down its thread */
+.friend[data-id="spider"] .bob { transform-origin: 50% 0; animation: dangle 5s ease-in-out infinite; }
+@keyframes dangle {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-30px) rotate(3deg); }
+}
+
+/* luna moth: slow, graceful drift and wingbeats */
+.friend[data-id="luna_moth"] .bob { animation: drift 8s ease-in-out infinite; }
+.friend[data-id="luna_moth"] img { animation: flap 0.6s ease-in-out infinite alternate; }
+
+/* ancient tortoise: slow breaths and nods */
+.friend[data-id="tortoise"] .bob { animation: nod 6s ease-in-out infinite; }
+@keyframes nod { 50% { transform: rotate(-2deg) scale(1.02, 0.98); } }
+
 /* Glowy: a sphere of light with fluttering wings. The wings flutter by squashing the art
    around the sphere (54.5% down, measured by make_art.py); a drawn core covers the sphere
    so it stays round and can pulse. */
 #glowy { width: 230px; height: 179px; z-index: 2; transition: opacity 0.6s ease; }
-#glowy .bob { animation: hover 4s ease-in-out infinite; }
+#glowy .bob { height: 100%; animation: hover 4s ease-in-out infinite; }
 #glowy .fairy { position: relative; width: 100%; height: 100%; }
 #glowy .fairy img {
   position: absolute;
@@ -92,7 +200,9 @@ html, body {
   height: 100%;
   transform-origin: 50% 54.5%;
   animation: flutter 0.07s ease-in-out infinite alternate;
-  filter: drop-shadow(0 0 10px rgba(255, 225, 232, 0.9)) drop-shadow(0 0 26px rgba(255, 160, 185, 0.6));
+  /* warm the pale wings toward the real orb's orange glow */
+  filter: sepia(0.5) saturate(1.8) hue-rotate(-12deg)
+    drop-shadow(0 0 10px rgba(255, 210, 150, 0.9)) drop-shadow(0 0 26px rgba(255, 150, 60, 0.6));
 }
 @keyframes flutter {
   from { transform: scaleY(1); }
@@ -106,63 +216,31 @@ html, body {
   aspect-ratio: 1;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  background: radial-gradient(circle, #fff 0%, #fff8f0 38%, #ffd6de 62%, rgba(255, 190, 205, 0) 72%);
-  box-shadow: 0 0 24px 10px rgba(255, 215, 225, 0.85), 0 0 70px 28px rgba(255, 150, 180, 0.5);
+  background: radial-gradient(circle, #fff 0%, #fff3dd 36%, #ffc27a 60%, rgba(255, 150, 60, 0) 72%);
+  box-shadow: 0 0 24px 10px rgba(255, 205, 140, 0.85), 0 0 70px 28px rgba(255, 140, 50, 0.5);
   animation: corepulse 1.8s ease-in-out infinite;
 }
 @keyframes corepulse {
   50% {
     transform: translate(-50%, -50%) scale(1.12);
-    box-shadow: 0 0 34px 14px rgba(255, 225, 232, 0.95), 0 0 90px 36px rgba(255, 160, 190, 0.6);
+    box-shadow: 0 0 34px 14px rgba(255, 215, 160, 0.95), 0 0 90px 36px rgba(255, 150, 60, 0.6);
   }
 }
 #glowy.gone { opacity: 0; }
 
-/* ---------- speech bubbles ---------- */
-.bubble {
+/* Glowy's lantern: the spinning orange dodecahedron on the rose is the real orb's twin */
+#lantern {
   position: absolute;
-  left: 50%;
-  bottom: calc(100% + 16px);
-  transform: translateX(-50%) translateY(8px) scale(0.92);
-  min-width: 140px;
-  max-width: 420px;
-  width: max-content;
-  padding: 14px 22px 16px;
-  border-radius: 22px;
-  background: var(--glass);
-  color: var(--card-ink);
-  font-size: 27px;
-  line-height: 1.3;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  transition: opacity 0.35s ease, transform 0.35s ease;
-  pointer-events: none;
-  z-index: 10;
+  width: 260px;
+  height: 260px;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  transition: opacity 0.6s ease;
 }
-.bubble::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -12px;
-  margin-left: -12px;
-  border: 12px solid transparent;
-  border-bottom: 0;
-  border-top-color: var(--glass);
-}
-.bubble.on { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-.bubble .who {
-  display: block;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #b0647a;
-  margin-bottom: 2px;
-}
+#lantern.gone { opacity: 0; }
 
 /* ---------- text overlays ---------- */
-#title { position: absolute; left: 56px; top: 40px; }
+#title { position: absolute; left: 56px; top: 40px; max-width: 600px; } /* wraps the subtitle clear of Glowy */
 #title .name {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 600;
@@ -174,8 +252,9 @@ html, body {
   font-family: 'Cormorant Garamond', serif;
   font-style: italic;
   font-size: 28px;
-  opacity: 0.85;
-  margin-top: -6px;
+  line-height: 1.25;
+  opacity: 0.9;
+  margin-top: 2px;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
@@ -190,6 +269,11 @@ html, body {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 600;
   font-size: 44px;
+}
+#hud .stage-name { transform-origin: right center; }
+#hud.grow .stage-name { animation: grow 1.8s ease-out; }
+@keyframes grow {
+  25% { transform: scale(1.25); text-shadow: 0 0 30px rgba(255, 200, 215, 1), 0 0 60px rgba(170, 255, 235, 0.8); }
 }
 #hud .count { font-size: 24px; opacity: 0.9; }
 #hud .dots { margin-top: 10px; display: flex; gap: 9px; justify-content: flex-end; }
@@ -216,65 +300,6 @@ html, body {
   transition: opacity 0.7s ease;
 }
 #narration.on { opacity: 1; }
-
-/* ---------- friend card ---------- */
-#card {
-  position: absolute;
-  left: 70px;
-  top: 190px;
-  width: 720px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 34px 44px 38px;
-  border-radius: 34px;
-  background: var(--glass);
-  color: var(--card-ink);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 60px rgba(255, 170, 190, 0.35);
-  z-index: 20;
-  transition: opacity 0.6s ease, transform 0.6s cubic-bezier(.2, .9, .3, 1.2);
-}
-#card.hidden { opacity: 0; transform: translateX(-40px) scale(0.95); pointer-events: none; }
-#card .portrait {
-  width: 240px;
-  height: 240px;
-  margin-bottom: 14px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle, #fff6e4 0%, #ffd8d8 45%, #b8efe3 100%);
-  box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.8);
-}
-#card .portrait img { max-width: 80%; max-height: 80%; }
-#card .kicker {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #b0647a;
-}
-#card .name { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 62px; line-height: 1.05; }
-#card .thanks {
-  font-family: 'Cormorant Garamond', serif;
-  font-style: italic;
-  font-size: 36px;
-  line-height: 1.25;
-  margin: 8px 0 14px;
-  min-height: 1.25em;
-}
-#card .fact { opacity: 0; transition: opacity 0.8s ease; }
-#card .fact.on { opacity: 1; }
-#card .fact span {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #3f8f84;
-}
-#card .fact p { margin: 4px 0 0; font-size: 25px; line-height: 1.35; }
-#card.rare { box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 90px rgba(255, 224, 150, 0.8); }
-#card.rare .kicker { color: #b38a1d; }
 
 /* ---------- chrome ---------- */
 #status {

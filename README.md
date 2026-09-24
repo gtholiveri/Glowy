@@ -1,9 +1,10 @@
 # GlowyMacgOrb
 
-Glowy is a tiny fairy of light who lives in a glowing rose and can't fly yet. The orb is her
-lantern. Lift it and she goes exploring with you; bring it back and she returns with a new
-friend who thanks you, shares why we're grateful for them, and moves into the garden on
-screen. Every few friends, the garden grows.
+Glowy is a tiny fairy of light who lives in a glowing rose and can't fly yet. The orange orb
+is her lantern, and the screen shows its twin resting on the rose. Lift the real one and Glowy
+dives into her lantern and goes exploring with you somewhere in the garden; bring it back and
+she pops out with the friend she found there, who moves in. Every few friends, the garden
+grows.
 
 ```
 Flipper (in the flower) ──BLE broadcast "orb home/away"──► Photon 2 (in the orb)
@@ -27,12 +28,9 @@ Options pass through, e.g. `start-dashboard.cmd -Port 8766` or `-NoBrowser`.
 
 ## Setup (once)
 ```
-pip install ufbt bleak google-genai
+pip install ufbt bleak
 python -m ufbt update
 ```
-Put a Gemini API key (from aistudio.google.com/apikey) in a file named `.env` at the repo root,
-either as the bare key or as `GEMINI_API_KEY=...`. It's git-ignored. Without it the creatures
-still chat, using built-in lines.
 
 ## Flipper app — `flipper/glowymacgorb/`
 Built against official firmware 1.4.3. Update the Flipper to the latest official
@@ -58,8 +56,9 @@ particle flash --local
 (Compiles in the cloud, flashes over USB. The `neopixel` library comes in automatically
 from `project.properties`.) The orb runs offline, so always flash it over USB.
 
-Moods: warm rose breathing at home (bright swell when it lands), curious teal-white twinkle
-while carried, dim amber "come home" pulse after a minute away.
+Moods, picked to read through orange plastic: warm gold-orange breathing at home (bright
+swell when it lands), bright warm-white twinkle while carried, dim ember-red "come home" pulse
+after a minute away.
 
 ## Dashboard — `dashboard/`
 ```
@@ -82,12 +81,12 @@ as if the Flipper had sent it.
 | R, R | Reset the garden |
 | H | Hide the status line and cursor |
 | M | Mute |
-| C | Make someone talk now |
 
 The garden is saved in the browser, so a reload keeps it. Reset it before the demo.
 
-Art lives in `dashboard/web/assets/`. To remake it (needs the Gemini key, plus
-`pip install "rembg[cpu]" pillow`):
+Art lives in `dashboard/web/assets/`. To remake it, put a Gemini API key (from
+aistudio.google.com/apikey) in a git-ignored `.env` file at the repo root, as the bare key or
+`GEMINI_API_KEY=...`, then `pip install google-genai "rembg[cpu]" pillow` and:
 ```
 cd dashboard/tools
 python make_art.py              # anything missing
