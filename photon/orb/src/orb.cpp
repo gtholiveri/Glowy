@@ -57,7 +57,14 @@ void setup() {
     strip.begin();
     strip.show();
     BLE.on();
-    BLE.setScanTimeout(50); // 500 ms per scan call (units of 10 ms)
+    BleScanParams scanParams = {};
+    scanParams.size = sizeof(BleScanParams);
+    scanParams.interval = 80; // 50 ms (units of 0.625 ms)
+    scanParams.window = 80; // listen the whole interval, so no broadcast slips past
+    scanParams.timeout = 50; // 500 ms per scan call (units of 10 ms)
+    scanParams.active = false; // just listen
+    scanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    BLE.setScanParameters(&scanParams);
     new Thread("scan", scanForever);
 }
 
@@ -79,7 +86,7 @@ void loop() {
     float period = 7.0f - 2.0f * lv; // seconds per breath
     phase += dt * TAU_F / period;
     if (phase > TAU_F) phase -= TAU_F;
-    flare -= flare * dt / (1.5f + dt);
+    flare -= flare * dt / (0.8f + dt);
 
     const float SLEEP[3] = {0.25f, 0.75f, 1.00f}; // moonlit teal
     const float HOME[3] = {1.00f, 0.30f, 0.38f}; // warm rose
@@ -87,10 +94,12 @@ void loop() {
     for (int i = 0; i < PIXEL_COUNT; i++) {
         // each LED breathes slightly out of step, so the orb shimmers instead of blinking
         float breath = 0.5f + 0.5f * sinf(phase + i * 0.84f);
-        float k = (0.30f + 0.30f * lv) + (0.20f + 0.20f * lv) * breath + 0.30f * flare;
-        float r = (SLEEP[0] + (HOME[0] - SLEEP[0]) * lv) * k;
-        float g = (SLEEP[1] + (HOME[1] - SLEEP[1]) * lv) * k;
-        float b = (SLEEP[2] + (HOME[2] - SLEEP[2]) * lv) * k;
+        float k = (0.30f + 0.30f * lv) + (0.20f + 0.20f * lv) * breath + 0.50f * flare;
+        // on arrival: an instant bright, slightly white flash that settles into the bloom
+        float w = 0.35f * flare;
+        float r = ((SLEEP[0] + (HOME[0] - SLEEP[0]) * lv) * (1 - w) + w) * k;
+        float g = ((SLEEP[1] + (HOME[1] - SLEEP[1]) * lv) * (1 - w) + w) * k;
+        float b = ((SLEEP[2] + (HOME[2] - SLEEP[2]) * lv) * (1 - w) + w) * k;
         strip.setPixelColor(i, toByte(r), toByte(g), toByte(b));
     }
     strip.show();

@@ -14,7 +14,7 @@
 #include <gui/gui.h>
 #include <notification/notification_messages.h>
 #include <nfc/nfc.h>
-#include <nfc/nfc_scanner.h>
+#include <nfc/nfc_poller.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,11 +31,12 @@
 #define STEM_FLOWS_DOWN 1 // 1 = pulses travel from the flower down the stem
 
 // ---------- timing ----------
-#define FRAME_MS        33 // ~30 fps
-#define ABSENT_AFTER_MS 2000 // card unseen this long -> orb has left
-#define SCANNER_KICK_MS 2000 // restart an idle scanner this often, just in case
-#define EASE_S          1.2f // how slowly the flower changes mood
-#define PULSE_GAP       10.0f // LEDs between stem pulses
+#define FRAME_MS          33 // ~30 fps
+#define POLL_GAP_MS       15 // pause between card checks
+#define GONE_AFTER_MISSES 3 // missed checks in a row before the orb counts as gone
+#define EASE_S            1.2f // how slowly the flower changes mood
+#define FLARE_S           0.8f // how fast the instant "I felt that" flash fades
+#define PULSE_GAP         10.0f // LEDs between stem pulses
 
 #define TAU 6.2831853f
 
@@ -48,6 +49,7 @@ static const Rgb RING_IDLE = {1.00f, 0.05f, 0.10f}; // low ember red
 static const Rgb RING_HOME = {1.00f, 0.35f, 0.42f}; // warm rose bloom
 static const Rgb STEM_IDLE = {0.15f, 1.00f, 0.35f}; // quiet green
 static const Rgb STEM_PULSE = {1.00f, 0.35f, 0.42f}; // rose flowing down
+static const Rgb WHITE = {1.00f, 1.00f, 1.00f};
 
 typedef struct {
     Gui* gui;
@@ -56,11 +58,9 @@ typedef struct {
     NotificationApp* notifications;
 
     Nfc* nfc;
-    NfcScanner* scanner;
-    volatile bool card_seen; // set from the scanner thread
-    uint32_t scanner_started;
-    uint32_t last_card;
-    bool ever_seen;
+    FuriThread* nfc_thread;
+    volatile bool running;
+    volatile bool card_here; // written by the NFC thread
 
     bool present;
     bool manual;
@@ -144,13 +144,14 @@ static void render(App* app, float dt) {
     const float period = 6.5f - 2.0f * lv; // seconds per breath
     app->phase = wrapf(app->phase + dt * TAU / period, TAU);
     app->flow = wrapf(app->flow + dt * (0.6f + 3.0f * lv), PULSE_GAP);
-    app->flare -= app->flare * dt / (1.5f + dt);
+    app->flare -= app->flare * dt / (FLARE_S + dt);
 
-    // Ring: a slow breath with a gentle ripple around the flower.
-    const Rgb ring = mix(RING_IDLE, RING_HOME, lv);
+    // Ring: a slow breath with a gentle ripple around the flower. On arrival it
+    // flashes bright and a little white right away, then settles into the bloom.
+    const Rgb ring = mix(mix(RING_IDLE, RING_HOME, lv), WHITE, 0.35f * app->flare);
     for(int i = 0; i < RING_LEDS; i++) {
         const float breath = 0.5f + 0.5f * sinf(app->phase + 0.8f * sinf(i * TAU / RING_LEDS));
-        const float k = (0.30f + 0.30f * lv) + (0.20f + 0.20f * lv) * breath + 0.30f * app->flare;
+        const float k = (0.30f + 0.30f * lv) + (0.20f + 0.20f * lv) * breath + 0.50f * app->flare;
         put_pixel(app, i, ring, k);
     }
 
@@ -163,7 +164,7 @@ static void render(App* app, float dt) {
         const float pulse = s >= 0.0f ? 1.0f / (1.0f + s * s * 0.35f) :
                                         1.0f / (1.0f + s * s * 4.0f);
         const float base = 0.22f + 0.12f * breath;
-        const float glow = 0.90f * pulse * lv;
+        const float glow = 0.90f * pulse * (lv > app->flare ? lv : app->flare);
         const Rgb c = {
             STEM_IDLE.r * base + STEM_PULSE.r * glow,
             STEM_IDLE.g * base + STEM_PULSE.g * glow,
@@ -190,8 +191,8 @@ static void beacon_publish(App* app) {
 
 static void beacon_init(App* app) {
     GapExtraBeaconConfig config = {
-        .min_adv_interval_ms = 50,
-        .max_adv_interval_ms = 100,
+        .min_adv_interval_ms = 20, // fast, so listeners hear a change within a few packets
+        .max_adv_interval_ms = 30,
         .adv_channel_map = GapAdvChannelMapAll,
         .adv_power_level = GapAdvPowerLevel_0dBm,
         .address_type = GapAddressTypePublic,
@@ -203,31 +204,30 @@ static void beacon_init(App* app) {
 }
 
 // ---------- NFC ----------
-static void scanner_callback(NfcScannerEvent event, void* context) {
+// A bare "is an NFC-A card in the field?" check, looped as fast as it will go.
+// Much quicker than the full scanner, which identifies every protocol a card
+// speaks before reporting anything.
+static int32_t presence_thread(void* context) {
     App* app = context;
-    if(event.type == NfcScannerEventTypeDetected) app->card_seen = true;
-}
+    uint8_t misses = GONE_AFTER_MISSES;
+    while(app->running) {
+        NfcPoller* poller = nfc_poller_alloc(app->nfc, NfcProtocolIso14443_3a);
+        const bool found = nfc_poller_detect(poller);
+        nfc_poller_free(poller);
 
-static void scanner_restart(App* app, uint32_t now) {
-    nfc_scanner_stop(app->scanner);
-    nfc_scanner_start(app->scanner, scanner_callback, app);
-    app->scanner_started = now;
-}
-
-static void update_presence(App* app, uint32_t now) {
-    // The scanner reports a card once per start, so restart it after every
-    // hit to keep confirming the card is still there.
-    if(app->card_seen) {
-        app->card_seen = false;
-        app->last_card = now;
-        app->ever_seen = true;
-        scanner_restart(app, now);
-    } else if(now - app->scanner_started > SCANNER_KICK_MS) {
-        scanner_restart(app, now);
+        if(found) {
+            misses = 0;
+        } else if(misses < GONE_AFTER_MISSES) {
+            misses++;
+        }
+        app->card_here = misses < GONE_AFTER_MISSES;
+        furi_delay_ms(POLL_GAP_MS);
     }
+    return 0;
+}
 
-    const bool present = app->manual ||
-                         (app->ever_seen && (now - app->last_card) < ABSENT_AFTER_MS);
+static void update_presence(App* app) {
+    const bool present = app->manual || app->card_here;
     if(present == app->present) return;
 
     app->present = present;
@@ -294,9 +294,9 @@ int32_t red_flower_app(void* p) {
     beacon_init(app);
 
     app->nfc = nfc_alloc();
-    app->scanner = nfc_scanner_alloc(app->nfc);
-    nfc_scanner_start(app->scanner, scanner_callback, app);
-    app->scanner_started = furi_get_tick();
+    app->running = true;
+    app->nfc_thread = furi_thread_alloc_ex("RedFlowerNfc", 2048, presence_thread, app);
+    furi_thread_start(app->nfc_thread);
 
     uint32_t last_frame = furi_get_tick();
     bool running = true;
@@ -327,15 +327,16 @@ int32_t red_flower_app(void* p) {
         if(dt > 0.1f) dt = 0.1f;
         last_frame = now;
 
-        update_presence(app, now);
+        update_presence(app);
         render(app, dt);
         ws2812_send(app->frame, sizeof(app->frame));
         view_port_update(app->view_port);
     }
 
     // Shut everything down and leave the LEDs dark.
-    nfc_scanner_stop(app->scanner);
-    nfc_scanner_free(app->scanner);
+    app->running = false;
+    furi_thread_join(app->nfc_thread);
+    furi_thread_free(app->nfc_thread);
     nfc_free(app->nfc);
 
     furi_hal_bt_extra_beacon_stop();
