@@ -1,4 +1,4 @@
-# The Red Flower
+# GlowyMacgOrb
 
 ```
 Flipper (in the flower) ──BLE broadcast "orb home/away"──► Photon 2 (in the orb)
@@ -6,8 +6,8 @@ Flipper (in the flower) ──BLE broadcast "orb home/away"──► Photon 2 (i
    └─ drives the flower ring + stem LEDs (GPIO pin 2)
 ```
 
-No pairing and no USB at demo time: the Flipper broadcasts its state ~10×/s and
-anything nearby just listens.
+No pairing and no USB at demo time: the Flipper broadcasts its state dozens of times a
+second and anything nearby just listens.
 
 **Wiring, power and placement: see [WIRING.md](WIRING.md).**
 
@@ -17,16 +17,16 @@ pip install ufbt bleak
 python -m ufbt update
 ```
 
-## Flipper app — `flipper/red_flower/`
+## Flipper app — `flipper/glowymacgorb/`
 Built against official firmware 1.4.3. Update the Flipper to the latest official
 release in qFlipper first (or point ufbt at your firmware's SDK if you run a custom one).
 
 1. Close qFlipper and plug in the Flipper.
-2. `cd flipper/red_flower` then `python -m ufbt launch` (builds, installs, runs).
+2. `cd flipper/glowymacgorb` then `python -m ufbt launch` (builds, installs, runs).
 3. Flipper: Settings → Bluetooth → ON.
 
 Wiring: strip data → pin 2 (PA7), strip 5V → pin 1, GND → pin 8 or 11.
-Set `RING_LEDS` / `STEM_LEDS` at the top of `red_flower.c`. Chain order is ring
+Set `RING_LEDS` / `STEM_LEDS` at the top of `glowymacgorb.c`. Chain order is ring
 first, then the stem starting at the flower end.
 
 Controls: OK = manual trigger, Up/Down = brightness, Back = exit.

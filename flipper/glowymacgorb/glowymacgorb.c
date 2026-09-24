@@ -1,4 +1,4 @@
-// The Red Flower — Flipper Zero app
+// GlowyMacgOrb — Flipper Zero app
 //
 // - Watches for the orb's NFC card through the flower's seat.
 // - Drives the flower's NeoPixels (ring + stem) straight from GPIO.
@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define TAG "RedFlower"
+#define TAG "GlowyMacgOrb"
 
 // ---------- LED wiring ----------
 // Data on GPIO pin 2 (PA7), strip power from pin 1 (5V), ground on pin 8 or 11.
@@ -180,7 +180,7 @@ static void beacon_publish(App* app) {
         0x02, 0x01, 0x06, // flags
         0x07, 0xFF, // manufacturer data, 6 bytes follow
         0xFF, 0xFF, // company id 0xFFFF (reserved for testing)
-        'R',  'F', // magic
+        'G',  'M', // magic
         app->present ? 1 : 0,
         app->seq,
     };
@@ -196,7 +196,7 @@ static void beacon_init(App* app) {
         .adv_channel_map = GapAdvChannelMapAll,
         .adv_power_level = GapAdvPowerLevel_0dBm,
         .address_type = GapAddressTypePublic,
-        .address = {0x21, 0x52, 0x46, 0x4C, 0x57, 0x52},
+        .address = {0x21, 0x47, 0x4D, 0x4F, 0x52, 0x42},
     };
     furi_hal_bt_extra_beacon_stop();
     furi_hal_bt_extra_beacon_set_config(&config);
@@ -239,7 +239,7 @@ static void update_presence(App* app) {
     } else {
         notification_message(app->notifications, &sequence_reset_rgb);
     }
-    FURI_LOG_I(TAG, present ? "RF:ORB_IN" : "RF:ORB_OUT");
+    FURI_LOG_I(TAG, present ? "ORB_IN" : "ORB_OUT");
     beacon_publish(app);
 }
 
@@ -250,7 +250,7 @@ static void draw_callback(Canvas* canvas, void* context) {
 
     canvas_clear(canvas);
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "The Red Flower");
+    canvas_draw_str_aligned(canvas, 64, 2, AlignCenter, AlignTop, "GlowyMacgOrb");
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str_aligned(
         canvas, 64, 20, AlignCenter, AlignTop, app->present ? "The orb is home" : "Waiting for the orb...");
@@ -270,7 +270,7 @@ static void input_callback(InputEvent* event, void* context) {
     furi_message_queue_put(app->input_queue, event, 0);
 }
 
-int32_t red_flower_app(void* p) {
+int32_t glowymacgorb_app(void* p) {
     UNUSED(p);
     App* app = malloc(sizeof(App));
     memset(app, 0, sizeof(App));
@@ -295,7 +295,7 @@ int32_t red_flower_app(void* p) {
 
     app->nfc = nfc_alloc();
     app->running = true;
-    app->nfc_thread = furi_thread_alloc_ex("RedFlowerNfc", 2048, presence_thread, app);
+    app->nfc_thread = furi_thread_alloc_ex("GlowyNfc", 2048, presence_thread, app);
     furi_thread_start(app->nfc_thread);
 
     uint32_t last_frame = furi_get_tick();

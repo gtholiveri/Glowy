@@ -1,8 +1,8 @@
 App(
-    appid="red_flower",
-    name="Red Flower",
+    appid="glowymacgorb",
+    name="GlowyMacgOrb",
     apptype=FlipperAppType.EXTERNAL,
-    entry_point="red_flower_app",
+    entry_point="glowymacgorb_app",
     requires=["gui"],
     stack_size=4 * 1024,
     fap_category="NFC",

@@ -1,4 +1,4 @@
-// The Red Flower — orb (Particle Photon 2 on battery)
+// GlowyMacgOrb — orb (Particle Photon 2 on battery)
 //
 // Listens for the Flipper's BLE broadcast and breathes:
 //   away from the flower -> slow, cool, moonlit teal ("sleeping")
@@ -29,8 +29,8 @@ volatile uint32_t lastBeaconMs = 0;
 void onScan(const BleScanResult* result, void* context) {
     uint8_t buf[BLE_MAX_ADV_DATA_LEN];
     size_t len = result->advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, sizeof(buf));
-    // [0xFF 0xFF] company id, 'R' 'F' magic, state, sequence
-    if (len >= 5 && buf[0] == 0xFF && buf[1] == 0xFF && buf[2] == 'R' && buf[3] == 'F') {
+    // [0xFF 0xFF] company id, 'G' 'M' magic, state, sequence
+    if (len >= 5 && buf[0] == 0xFF && buf[1] == 0xFF && buf[2] == 'G' && buf[3] == 'M') {
         orbHome = (buf[4] == 1);
         lastBeaconMs = millis();
     }

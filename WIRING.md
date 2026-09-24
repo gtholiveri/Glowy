@@ -76,16 +76,16 @@ Flipper pin 8 (GND) ───────────────── Ring GND
 
 | What | File | Setting |
 |---|---|---|
-| Flower ring LED count | `flipper/red_flower/red_flower.c` | `RING_LEDS` |
-| Stem LED count (0 if no stem strip) | `flipper/red_flower/red_flower.c` | `STEM_LEDS` |
-| Stem pulse direction | `flipper/red_flower/red_flower.c` | `STEM_FLOWS_DOWN` |
+| Flower ring LED count | `flipper/glowymacgorb/glowymacgorb.c` | `RING_LEDS` |
+| Stem LED count (0 if no stem strip) | `flipper/glowymacgorb/glowymacgorb.c` | `STEM_LEDS` |
+| Stem pulse direction | `flipper/glowymacgorb/glowymacgorb.c` | `STEM_FLOWS_DOWN` |
 | Orb LED count | `photon/orb/src/orb.cpp` | `PIXEL_COUNT` |
 | Orb brightness | `photon/orb/src/orb.cpp` | `MAX_BRIGHTNESS` |
 
 Flower brightness is adjusted live with Up/Down on the Flipper.
 
 After changing a setting, rebuild:
-- **Flipper:** run `python -m ufbt launch` in `flipper/red_flower`.
+- **Flipper:** run `python -m ufbt launch` in `flipper/glowymacgorb`.
 - **Orb:** run `particle flash --local` in `photon/orb`.
 
 ---
@@ -101,7 +101,7 @@ After changing a setting, rebuild:
 |---|---|---|
 | LEDs stay dark | App not running, GND missing, or DIN/DOUT swapped | Start the app; check GND; follow the arrows |
 | Random colors or flicker on the flower | Flipper's 3.3 V data signal is too weak for 5 V LEDs | Shorten the data wire, add the 330 Ω resistor and the capacitor. Still bad: add a 74AHCT125 level shifter, or use a "sacrificial pixel" (search that term) |
-| Flower glows green where it should be red | Strip uses a different color order | In `put_pixel()` in `red_flower.c`, swap the `c.g` and `c.r` lines |
+| Flower glows green where it should be red | Strip uses a different color order | In `put_pixel()` in `glowymacgorb.c`, swap the `c.g` and `c.r` lines |
 | Flipper reboots when the LEDs brighten | Too much current | Down button to dim, or a USB power bank on the Flipper |
 | Ring works, stem stays dark | `STEM_LEDS` is 0, or the stem is wired at the wrong end | Set the count; DIN goes at the top |
 | Card isn't detected | Too far, off the sweet spot, or metal near the card | Test with the Flipper's built-in NFC → Read first; center the card on the sweet spot; move the battery, board and LEDs away from the card |

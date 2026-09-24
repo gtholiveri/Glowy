@@ -1,4 +1,4 @@
-"""The Red Flower — laptop bridge.
+"""GlowyMacgOrb — laptop bridge.
 
 Listens for the Flipper's Bluetooth broadcast and passes "orb home / away"
 to the dashboard in the browser. No pairing, no USB.
@@ -36,7 +36,7 @@ def push() -> None:
 
 def on_advertisement(device, adv) -> None:
     data = adv.manufacturer_data.get(COMPANY_ID)
-    if not data or len(data) < 3 or data[:2] != b"RF":
+    if not data or len(data) < 3 or data[:2] != b"GM":
         return
     first = state["seen"] == 0.0
     state["seen"] = time.time()
