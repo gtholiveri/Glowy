@@ -1,0 +1,10 @@
+# Flipper build output (ufbt)
+dist/
+.vscode/
+
+# Particle build output
+*.bin
+target/
+
+# Python
+__pycache__/

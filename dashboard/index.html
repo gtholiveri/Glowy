@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Red Flower</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal: #2E9E8C;
+    --teal-deep: #16463D;
+    --mint: #BFEAD9;
+    --leaf: #7FC9A8;
+    --sage: #CFEADA;
+    --moss: #3E8C6E;
+    --silver: #E9EEF3;
+    --ink: #FFFFFF;
+    --ink-soft: #EAF4F0;
+    --card-ink: #43324F;
+    --card-ink-soft: #6B5A78;
+    --gold-silver: #E7D9F5;
+    --flood-deep: #C4525A;
+    --flood-mid: #E9A6A6;
+    --flood-light: #F6D6D6;
+    --flood-blush: #FBE6E2;
+    --card-bg: rgba(255,255,255,0.5);
+    --card-border: rgba(255,255,255,0.7);
+  }
+  *{ box-sizing: border-box; }
+  html, body{
+    height: 100%;
+    margin: 0;
+    font-family: 'Jost', sans-serif;
+    color: var(--ink);
+    overflow: hidden;
+  }
+  body{
+    background: linear-gradient(120deg,
+      var(--teal-deep) 0%,
+      var(--teal) 30%,
+      var(--moss) 50%,
+      var(--teal) 70%,
+      var(--teal-deep) 100%);
+    background-size: 400% 400%;
+    animation: flow 26s ease-in-out infinite;
+  }
+  @keyframes flow{
+    0%   { background-position: 0% 30%; }
+    50%  { background-position: 100% 70%; }
+    100% { background-position: 0% 30%; }
+  }
+
+  /* ---------- flood: the color that arrives with a signal ----------
+     A second, identically-animated gradient in the flood palette sits
+     above the base garden. Instead of wiping in with a hard edge, it
+     cross-fades in slowly and stays translucent, so green settles into
+     pink gradually and naturally rather than switching abruptly. It
+     fades back out the same slow way when the signal ends.
+  ------------------------------------------------------------------- */
+  .flood-bg{
+    position: fixed; inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(120deg,
+      var(--flood-deep) 0%,
+      var(--flood-deep) 20%,
+      var(--flood-mid) 40%,
+      var(--flood-blush) 50%,
+      var(--flood-mid) 60%,
+      var(--flood-deep) 80%,
+      var(--flood-deep) 100%);
+    background-size: 400% 400%;
+    animation: flow 26s ease-in-out infinite;
+    opacity: 0;
+    transition: opacity 5000ms ease-in-out;
+  }
+  body.signal-active .flood-bg{
+    opacity: 0.82;
+  }
+  /* soft moving light washes, like wind or water passing through */
+  .veil{
+    position: fixed; inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(60% 40% at 20% 20%, rgba(255,255,255,0.16), transparent 60%),
+      radial-gradient(50% 35% at 80% 75%, rgba(255,255,255,0.14), transparent 60%);
+    background-size: 200% 200%;
+    animation: veilMove 18s ease-in-out infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes veilMove{
+    0%   { background-position: 0% 0%, 100% 100%; }
+    50%  { background-position: 60% 40%, 40% 60%; }
+    100% { background-position: 0% 0%, 100% 100%; }
+  }
+
+  /* ---------- ambient garden background ---------- */
+  .garden{
+    position: fixed; inset: 0;
+    z-index: 0;
+  }
+  .mote{
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ffffff, rgba(255,255,255,0.2) 70%);
+    box-shadow: 0 0 12px 3px rgba(255,255,255,0.55);
+    opacity: 0.9;
+    animation: drift linear infinite;
+  }
+  .bloom{
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(50px);
+    opacity: 0.35;
+    mix-blend-mode: overlay;
+    animation: sway ease-in-out infinite;
+  }
+  @keyframes drift{
+    0%   { transform: translateY(0) translateX(0); }
+    50%  { transform: translateY(-40vh) translateX(3vw); }
+    100% { transform: translateY(-100vh) translateX(-2vw); opacity: 0; }
+  }
+  @keyframes sway{
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50%      { transform: translate(2vw, -2vh) scale(1.08); }
+  }
+
+  /* ---------- idle stage ---------- */
+  .stage{
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+  }
+  /* The outer element handles the slow dissolve (opacity + soft blur);
+     the inner one handles the gentle "breathing". They are separate because
+     an animation on the same element would override the opacity fade and
+     make the text vanish instantly instead of dissolving. */
+  .idle-mark{
+    max-width: 480px;
+    opacity: 1;
+    filter: blur(0);
+    visibility: visible;
+    /* fade IN: slow and soft */
+    transition: opacity 3800ms ease-in-out,
+                filter 3800ms ease-in-out,
+                visibility 0s linear 0s;
+  }
+  .idle-mark.hidden{
+    opacity: 0;
+    filter: blur(8px);
+    visibility: hidden;
+    /* fade OUT: slowly dissolve into the background, then hide at the end */
+    transition: opacity 3800ms ease-in-out,
+                filter 3800ms ease-in-out,
+                visibility 0s linear 3800ms;
+  }
+  .idle-inner{
+    display: block;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(20px, 2.6vw, 27px);
+    line-height: 1.6;
+    color: var(--ink);
+    letter-spacing: 0.01em;
+    text-shadow: 0 2px 14px rgba(0,0,0,0.18);
+    animation: breathe 6s ease-in-out infinite;
+  }
+  @keyframes breathe{
+    0%, 100% { opacity: 0.65; transform: translateY(0); }
+    50%      { opacity: 1; transform: translateY(-4px); }
+  }
+
+  /* ---------- quote card ---------- */
+  .card{
+    position: relative;
+    z-index: 2;
+    max-width: 560px;
+    padding: 46px 44px;
+    border-radius: 4px;
+    background: var(--card-bg);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--card-border);
+    box-shadow: 0 30px 60px rgba(110, 94, 130, 0.18);
+    display: none;
+    text-align: center;
+    transition: background 2600ms ease, border-color 2600ms ease, box-shadow 2600ms ease;
+  }
+  body.signal-active .card{
+    --card-bg: rgba(255, 240, 236, 0.6);
+    --card-border: rgba(255, 214, 205, 0.85);
+    box-shadow: 0 30px 60px rgba(196, 82, 90, 0.2);
+  }
+  .card.show{
+    display: block;
+    animation: rise 2200ms cubic-bezier(.2,.9,.25,1) forwards;
+  }
+  @keyframes rise{
+    from { opacity: 0; transform: translateY(30px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .card.leaving{
+    animation: fall 1400ms ease-in forwards !important;
+  }
+  @keyframes fall{
+    to { opacity: 0; transform: translateY(18px) scale(0.97); }
+  }
+  .glyph{
+    font-size: 34px;
+    margin-bottom: 6px;
+  }
+  .choice-line{
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(24px, 3.4vw, 32px);
+    font-weight: 500;
+    color: var(--card-ink);
+    margin: 0 0 20px;
+    display: inline-block;
+    animation: textDrift 6s ease-in-out 400ms infinite;
+  }
+  .quote-line{
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: clamp(26px, 4vw, 34px);
+    line-height: 1.5;
+    color: var(--card-ink);
+    margin: 0 0 22px;
+    display: inline-block;
+    animation: textDrift 7s ease-in-out 700ms infinite;
+  }
+  .trait-line{
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--card-ink-soft);
+    max-width: 420px;
+    margin: 0 auto;
+    display: inline-block;
+    animation: textDrift 8s ease-in-out 1000ms infinite;
+  }
+  @keyframes textDrift{
+    0%, 100% { transform: translateY(0) rotate(-0.8deg); }
+    50%      { transform: translateY(-7px) rotate(0.9deg); }
+  }
+
+  /* ---------- control dock ---------- */
+  .dock{
+    position: fixed;
+    bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 12.5px;
+  }
+  .dock button{
+    font-family: 'Jost', sans-serif;
+    font-size: 13px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(74,59,92,0.25);
+    background: rgba(255,255,255,0.7);
+    color: var(--card-ink);
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+  .dock button:hover{ background: rgba(255,255,255,0.92); }
+  .status{
+    color: var(--ink);
+    opacity: 0.85;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
+  .status.connected::before{
+    content: '';
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #8fbf9f;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  body.clean .dock{ display: none; }
+  body.clean{ cursor: none; }
+  .status.off::before{
+    content: '';
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #cbb9c9;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<div class="flood-bg" id="floodBg"></div>
+<div class="garden" id="garden"></div>
+<div class="veil"></div>
+
+<div class="stage">
+  <div class="idle-mark" id="idleMark">
+    <span class="idle-inner">Garden is still.<br>Bring a pollen to a flower to hear what it knows.</span>
+  </div>
+
+  <div class="card" id="card">
+    <div class="glyph">🌺</div>
+    <p class="choice-line">You chose the red flower.</p>
+    <p class="quote-line" id="quoteText"></p>
+    <p class="trait-line" id="traitText"></p>
+  </div>
+</div>
+
+<div class="dock">
+  <button id="simInBtn">Simulate: tag in</button>
+  <button id="simOutBtn">Simulate: tag out</button>
+  <span class="status off" id="statusText">looking for the bridge…</span>
+</div>
+
+<script>
+/* ---------------- ambient background ---------------- */
+const garden = document.getElementById('garden');
+const bloomColors = ['#F6DCE4', '#EAE1F5', '#DCEAE3', '#BFE8DD'];
+for (let i = 0; i < 4; i++) {
+  const b = document.createElement('div');
+  b.className = 'bloom';
+  const size = 220 + Math.random() * 180;
+  b.style.width = size + 'px';
+  b.style.height = size + 'px';
+  b.style.left = (Math.random() * 90) + 'vw';
+  b.style.top = (Math.random() * 90) + 'vh';
+  b.style.background = bloomColors[i % bloomColors.length];
+  b.style.animationDuration = (10 + Math.random() * 8) + 's';
+  garden.appendChild(b);
+}
+for (let i = 0; i < 34; i++) {
+  const m = document.createElement('div');
+  m.className = 'mote';
+  const size = 5 + Math.random() * 8;
+  m.style.width = size + 'px';
+  m.style.height = size + 'px';
+  m.style.left = (Math.random() * 100) + 'vw';
+  m.style.top = (55 + Math.random() * 45) + 'vh';
+  m.style.animationDuration = (7 + Math.random() * 9) + 's';
+  m.style.animationDelay = (Math.random() * 8) + 's';
+  garden.appendChild(m);
+}
+
+/* ---------------- readings ---------------- */
+const readings = [
+  { quote: "The red flower does not ask permission to bloom.", trait: "You lead with instinct before analysis — decisive, warm, and a little impatient with hesitation." },
+  { quote: "Red remembers the fire it grew from.", trait: "You carry old lessons quietly and let them steady you rather than slow you down." },
+  { quote: "It opens fully or not at all.", trait: "You give things everything or you don't give them your attention — there's no polite middle for you." },
+  { quote: "Red is the color of a held door and a raised voice.", trait: "You protect the people around you loudly, and you're not embarrassed about it." },
+  { quote: "The petal is soft; the choice to wear it is not.", trait: "You look approachable, but the decisions underneath are firmer than people expect." },
+  { quote: "It grows toward the light without checking who's watching.", trait: "You're motivated by your own compass, not applause — even when applause would be nice." },
+  { quote: "Red flowers close at dusk and trust the morning.", trait: "You know how to rest without treating it as failure. Recovery is part of your plan, not a break from it." },
+  { quote: "It is the loudest color and the easiest to overlook up close.", trait: "You make a strong first impression but reveal your depth slowly, on your own terms." },
+  { quote: "A red flower in a quiet garden is still a red flower.", trait: "You don't dilute yourself to match the room. Consistency matters more to you than blending in." },
+  { quote: "It bruises easily and blooms again anyway.", trait: "You feel things hard, recover fast, and rarely let one bad season convince you the garden is dead." },
+  { quote: "Red doesn't negotiate with beige.", trait: "You have strong preferences and you're honest about them, even when it would be easier to shrug." },
+  { quote: "The flower doesn't compete with the others — it simply refuses to be missed.", trait: "You're not driven by rivalry. You're driven by wanting to be fully seen." },
+  { quote: "It was chosen because it was the only one that mattered to you.", trait: "When you commit, you commit — you're not the type to keep browsing after deciding." },
+  { quote: "Red is warmth held close enough to burn, if you let it.", trait: "You care intensely, and you're learning where the edges of that intensity should sit." },
+  { quote: "The garden grew a hundred flowers. You noticed the one that matched your pulse.", trait: "You trust your gut read on people and situations faster than most, and you're usually right." }
+];
+let lastIndex = -1;
+function pickReading(){
+  let i = Math.floor(Math.random() * readings.length);
+  if (readings.length > 1) { while (i === lastIndex) i = Math.floor(Math.random() * readings.length); }
+  lastIndex = i;
+  return readings[i];
+}
+
+/* ---------------- show / hide logic ---------------- */
+const card = document.getElementById('card');
+const idleMark = document.getElementById('idleMark');
+const quoteText = document.getElementById('quoteText');
+const traitText = document.getElementById('traitText');
+let visible = false;
+
+/* Keep these in sync with the CSS transition durations above:
+   FLOOD_MS matches .flood-bg's opacity transition (the slow green->pink
+   color change), CARD_LEAVE_MS matches .card.leaving's fall animation. */
+const FLOOD_MS = 5000;
+const CARD_LEAVE_MS = 1400;
+const IDLE_FADE_MS = 3800; // matches .idle-mark's fade in/out in the CSS
+let showTimer = null;
+let idleTimer = null;
+
+function showQuote(){
+  if (visible) return;
+  visible = true;
+  clearTimeout(showTimer);
+  clearTimeout(idleTimer);
+
+  const r = pickReading();
+  quoteText.textContent = r.quote;
+  traitText.textContent = r.trait;
+
+  // Start the slow green -> pink color transition right away, and hide
+  // the idle line since the garden is no longer "still".
+  idleMark.classList.add('hidden');
+  document.body.classList.add('signal-active');
+
+  // Only bring the quote card in once the color has fully settled into pink.
+  showTimer = setTimeout(() => {
+    if (!visible) return; // tag may have been pulled again before this fired
+    card.classList.remove('leaving');
+    card.classList.add('show');
+  }, FLOOD_MS);
+}
+
+function hideQuote(){
+  if (!visible) return;
+  visible = false;
+  clearTimeout(showTimer);
+  clearTimeout(idleTimer);
+
+  // Let the quote fall away first, and start fading the color back to green.
+  card.classList.add('leaving');
+  setTimeout(() => {
+    card.classList.remove('show', 'leaving');
+  }, CARD_LEAVE_MS);
+  document.body.classList.remove('signal-active');
+
+  // Only bring "Garden is still..." back once the quote is fully gone AND
+  // the color has fully settled back to green, so nothing overlaps mid-transition.
+  idleTimer = setTimeout(() => {
+    if (visible) return; // tag came back before this fired
+    idleMark.classList.remove('hidden');
+  }, Math.max(CARD_LEAVE_MS, FLOOD_MS));
+}
+
+document.getElementById('simInBtn').addEventListener('click', showQuote);
+document.getElementById('simOutBtn').addEventListener('click', hideQuote);
+
+/* ---------------- bridge connection ----------------
+   bridge.py listens for the Flipper's Bluetooth broadcast and streams
+   {orb: true/false, flipper: true/false} here. Open this page through
+   the bridge (http://localhost:8765), not as a file.
+
+   Keys:  Space = manual toggle (Wizard-of-Oz backup)
+          H     = hide/show the button dock for presenting
+------------------------------------------------------------- */
+const statusText = document.getElementById('statusText');
+let lastOrb = null;
+
+function setStatus(msg, connected){
+  statusText.textContent = msg;
+  statusText.classList.toggle('connected', !!connected);
+  statusText.classList.toggle('off', !connected);
+}
+
+function connectBridge(){
+  if (location.protocol === 'file:') {
+    setStatus('run bridge.py and open http://localhost:8765', false);
+    return;
+  }
+  const events = new EventSource('/events');
+  events.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    setStatus(msg.flipper ? 'listening to the flower' : 'waiting to hear the flower…', msg.flipper);
+    // Only act when the orb actually changes, so manual toggles aren't overridden by heartbeats.
+    if (msg.orb !== lastOrb) {
+      lastOrb = msg.orb;
+      msg.orb ? showQuote() : hideQuote();
+    }
+  };
+  events.onerror = () => setStatus('bridge offline — is bridge.py running?', false);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    visible ? hideQuote() : showQuote();
+  } else if (e.key === 'h' || e.key === 'H') {
+    document.body.classList.toggle('clean');
+  }
+});
+
+connectBridge();
+</script>
+</body>
+</html>
