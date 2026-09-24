@@ -1,8 +1,9 @@
 // GlowyMacgOrb — orb (Particle Photon 2 on battery)
 //
-// Listens for the Flipper's BLE broadcast and breathes:
-//   away from the flower -> slow, cool, moonlit teal ("sleeping")
-//   home on the flower   -> warm rose, a little livelier, with a soft swell on arrival
+// Glowy rides in this orb. It listens for the Flipper's BLE broadcast and shows her mood:
+//   home on the flower  -> warm rose, slow breathing, with a bright swell the moment she lands
+//   out exploring       -> bright, curious teal-white with little twinkles
+//   away over a minute  -> homesick: dim amber, slow "come home" pulse
 //
 // Needs the "neopixel" library (Particle Workbench: Install Library -> neopixel).
 
@@ -17,7 +18,12 @@ SYSTEM_MODE(SEMI_AUTOMATIC); // stays offline: no Wi-Fi/cloud needed. Flash over
 #define PIXEL_TYPE  WS2812B
 const float MAX_BRIGHTNESS = 0.45f; // 0-1; lower = longer battery life
 const uint32_t LOST_MS = 5000; // no broadcast for this long -> act as if away
+const uint32_t HOMESICK_MS = 60000; // matches the dashboard's "Glowy's getting sleepy"
 // ----------------------------------
+
+const float HOME_C[3] = {1.00f, 0.30f, 0.38f}; // warm rose
+const float AWAKE_C[3] = {0.55f, 0.90f, 1.00f}; // curious teal-white
+const float SICK_C[3] = {1.00f, 0.55f, 0.25f}; // sleepy amber
 
 const float TAU_F = 6.2831853f;
 
@@ -43,19 +49,26 @@ void scanForever(void*) {
     }
 }
 
-float level = 0, phase = 0, flare = 0;
+float level = 0, sick = 0, phase = 0, flare = 0;
 bool wasHome = false;
-uint32_t lastFrame = 0;
+uint32_t lastFrame = 0, awayStartMs = 0;
+float twinklePhase[PIXEL_COUNT], twinkleSpeed[PIXEL_COUNT];
 
 uint8_t toByte(float v) {
     v = constrain(v, 0.0f, 1.0f);
     return (uint8_t)(v * v * MAX_BRIGHTNESS * 255.0f + 0.5f); // gamma 2
 }
 
+float mix(float a, float b, float t) { return a + (b - a) * t; }
+
 void setup() {
     Serial.begin();
     strip.begin();
     strip.show();
+    for (int i = 0; i < PIXEL_COUNT; i++) {
+        twinklePhase[i] = random(0, 6283) / 1000.0f;
+        twinkleSpeed[i] = 1.5f + random(0, 2000) / 1000.0f;
+    }
     BLE.on();
     BleScanParams scanParams = {};
     scanParams.size = sizeof(BleScanParams);
@@ -78,29 +91,37 @@ void loop() {
     if (home != wasHome) {
         Serial.println(home ? "orb home" : "orb away");
         if (home) flare = 1.0f;
+        else awayStartMs = now;
         wasHome = home;
     }
+    bool homesick = !home && (now - awayStartMs > HOMESICK_MS);
 
+    // Ease between moods so every change is a slow cross-fade.
     level += ((home ? 1.0f : 0.0f) - level) * dt / (1.2f + dt);
+    sick += ((homesick ? 1.0f : 0.0f) - sick) * dt / (2.0f + dt);
     float lv = level * level * (3.0f - 2.0f * level); // smoothstep
-    float period = 7.0f - 2.0f * lv; // seconds per breath
+    float period = mix(mix(3.0f, 7.5f, sick), 5.5f, lv); // seconds per breath
     phase += dt * TAU_F / period;
     if (phase > TAU_F) phase -= TAU_F;
     flare -= flare * dt / (0.8f + dt);
 
-    const float SLEEP[3] = {0.25f, 0.75f, 1.00f}; // moonlit teal
-    const float HOME[3] = {1.00f, 0.30f, 0.38f}; // warm rose
+    float kBase = mix(mix(0.45f, 0.15f, sick), 0.60f, lv);
+    float kAmp = mix(mix(0.25f, 0.20f, sick), 0.40f, lv);
+    float awake = (1.0f - lv) * (1.0f - sick); // how much the curious twinkle shows
+    float t = now / 1000.0f;
 
     for (int i = 0; i < PIXEL_COUNT; i++) {
         // each LED breathes slightly out of step, so the orb shimmers instead of blinking
         float breath = 0.5f + 0.5f * sinf(phase + i * 0.84f);
-        float k = (0.30f + 0.30f * lv) + (0.20f + 0.20f * lv) * breath + 0.50f * flare;
-        // on arrival: an instant bright, slightly white flash that settles into the bloom
-        float w = 0.35f * flare;
-        float r = ((SLEEP[0] + (HOME[0] - SLEEP[0]) * lv) * (1 - w) + w) * k;
-        float g = ((SLEEP[1] + (HOME[1] - SLEEP[1]) * lv) * (1 - w) + w) * k;
-        float b = ((SLEEP[2] + (HOME[2] - SLEEP[2]) * lv) * (1 - w) + w) * k;
-        strip.setPixelColor(i, toByte(r), toByte(g), toByte(b));
+        float twinkle = 0.6f * awake * powf(fmaxf(0.0f, sinf(t * twinkleSpeed[i] + twinklePhase[i])), 12.0f);
+        float k = kBase + kAmp * breath + 0.50f * flare + twinkle;
+        // arrival flash and twinkles both lean toward white
+        float w = fminf(1.0f, 0.35f * flare + 0.5f * twinkle);
+        float c[3];
+        for (int j = 0; j < 3; j++) {
+            c[j] = (mix(mix(AWAKE_C[j], SICK_C[j], sick), HOME_C[j], lv) * (1 - w) + w) * k;
+        }
+        strip.setPixelColor(i, toByte(c[0]), toByte(c[1]), toByte(c[2]));
     }
     strip.show();
 }
