@@ -1,10 +1,8 @@
-# GlowyMacgOrb
+# Glowy
 
-Glowy is a tiny fairy of light who lives in a glowing rose and can't fly yet. The orange orb
-is her lantern, and the screen shows its twin resting on the rose. Lift the real one and Glowy
-dives into her lantern and goes exploring with you somewhere in the garden; bring it back and
-she pops out with the friend she found there, who moves in. Every few friends, the garden
-grows.
+Prototype project for Terra Labs experience design build sprint.
+
+Narrative: Glowy is a fairylike creature that lives in a lantern, and who you take on quests / adventures through the environment. As you move around and tap the lantern to points of interest, Glowy's LEDs react and the state of the garden (projected on a web app) changes.
 
 ```
 Flipper (in the flower) ──BLE broadcast "orb home/away"──► Photon 2 (in the orb)
